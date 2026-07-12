@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ValueAnalysisRouteImport } from './routes/value-analysis'
 import { Route as TeamsRouteImport } from './routes/teams'
+import { Route as SystemStatusRouteImport } from './routes/system-status'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PerformanceAnalyticsRouteImport } from './routes/performance-analytics'
 import { Route as MatchesRouteImport } from './routes/matches'
@@ -36,9 +38,19 @@ const TeamsRoute = TeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SystemStatusRoute = SystemStatusRouteImport.update({
+  id: '/system-status',
+  path: '/system-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -121,7 +133,9 @@ export interface FileRoutesByFullPath {
   '/matches': typeof MatchesRoute
   '/performance-analytics': typeof PerformanceAnalyticsRoute
   '/reports': typeof ReportsRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/system-status': typeof SystemStatusRoute
   '/teams': typeof TeamsRoute
   '/value-analysis': typeof ValueAnalysisRoute
 }
@@ -139,7 +153,9 @@ export interface FileRoutesByTo {
   '/matches': typeof MatchesRoute
   '/performance-analytics': typeof PerformanceAnalyticsRoute
   '/reports': typeof ReportsRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/system-status': typeof SystemStatusRoute
   '/teams': typeof TeamsRoute
   '/value-analysis': typeof ValueAnalysisRoute
 }
@@ -158,7 +174,9 @@ export interface FileRoutesById {
   '/matches': typeof MatchesRoute
   '/performance-analytics': typeof PerformanceAnalyticsRoute
   '/reports': typeof ReportsRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/system-status': typeof SystemStatusRoute
   '/teams': typeof TeamsRoute
   '/value-analysis': typeof ValueAnalysisRoute
 }
@@ -178,7 +196,9 @@ export interface FileRouteTypes {
     | '/matches'
     | '/performance-analytics'
     | '/reports'
+    | '/research'
     | '/settings'
+    | '/system-status'
     | '/teams'
     | '/value-analysis'
   fileRoutesByTo: FileRoutesByTo
@@ -196,7 +216,9 @@ export interface FileRouteTypes {
     | '/matches'
     | '/performance-analytics'
     | '/reports'
+    | '/research'
     | '/settings'
+    | '/system-status'
     | '/teams'
     | '/value-analysis'
   id:
@@ -214,7 +236,9 @@ export interface FileRouteTypes {
     | '/matches'
     | '/performance-analytics'
     | '/reports'
+    | '/research'
     | '/settings'
+    | '/system-status'
     | '/teams'
     | '/value-analysis'
   fileRoutesById: FileRoutesById
@@ -233,7 +257,9 @@ export interface RootRouteChildren {
   MatchesRoute: typeof MatchesRoute
   PerformanceAnalyticsRoute: typeof PerformanceAnalyticsRoute
   ReportsRoute: typeof ReportsRoute
+  ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
+  SystemStatusRoute: typeof SystemStatusRoute
   TeamsRoute: typeof TeamsRoute
   ValueAnalysisRoute: typeof ValueAnalysisRoute
 }
@@ -254,11 +280,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/system-status': {
+      id: '/system-status'
+      path: '/system-status'
+      fullPath: '/system-status'
+      preLoaderRoute: typeof SystemStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -369,10 +409,22 @@ const rootRouteChildren: RootRouteChildren = {
   MatchesRoute: MatchesRoute,
   PerformanceAnalyticsRoute: PerformanceAnalyticsRoute,
   ReportsRoute: ReportsRoute,
+  ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
+  SystemStatusRoute: SystemStatusRoute,
   TeamsRoute: TeamsRoute,
   ValueAnalysisRoute: ValueAnalysisRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
