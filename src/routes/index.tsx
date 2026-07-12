@@ -109,7 +109,7 @@ function Dashboard() {
 
         <GlassCard className="p-5">
           <SectionTitle title="Model confidence" description="Cross-engine consensus" />
-          <div className="grid h-48 place-items-center">
+          <div className="relative grid h-48 place-items-center">
             <ResponsiveContainer width="100%" height="100%">
               <RadialBarChart innerRadius="70%" outerRadius="100%" data={[{ name: "conf", value: 87.4, fill: "oklch(0.72 0.19 245)" }]} startAngle={90} endAngle={-270}>
                 <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
@@ -208,20 +208,32 @@ function Dashboard() {
             action={<a className="inline-flex items-center gap-1 text-xs text-primary hover:underline" href="/alerts">Open alert center <ArrowUpRight className="h-3 w-3" /></a>}
           />
           <div className="space-y-2">
-            {alerts.map((a, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5">
-                <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-md bg-${a.level}/10 text-${a.level}`}>
-                  <Bell className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider text-${a.level}`}>{a.type}</span>
-                    <span className="text-[10px] text-muted-foreground">{a.t}</span>
+            {alerts.map((a, i) => {
+              const styles = {
+                primary: "bg-primary/10 text-primary",
+                emerald: "bg-emerald/10 text-emerald",
+                warning: "bg-warning/10 text-warning",
+              }[a.level as "primary" | "emerald" | "warning"];
+              const text = {
+                primary: "text-primary",
+                emerald: "text-emerald",
+                warning: "text-warning",
+              }[a.level as "primary" | "emerald" | "warning"];
+              return (
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5">
+                  <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${styles}`}>
+                    <Bell className="h-4 w-4" />
                   </div>
-                  <div className="truncate text-sm">{a.msg}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${text}`}>{a.type}</span>
+                      <span className="text-[10px] text-muted-foreground">{a.t}</span>
+                    </div>
+                    <div className="truncate text-sm">{a.msg}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </GlassCard>
       </div>
