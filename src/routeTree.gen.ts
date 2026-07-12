@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ValueAnalysisRouteImport } from './routes/value-analysis'
+import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as TeamsRouteImport } from './routes/teams'
 import { Route as SystemStatusRouteImport } from './routes/system-status'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -21,6 +22,7 @@ import { Route as MarketIntelligenceRouteImport } from './routes/market-intellig
 import { Route as LiveOddsRouteImport } from './routes/live-odds'
 import { Route as LeaguesRouteImport } from './routes/leagues'
 import { Route as HistoricalDatabaseRouteImport } from './routes/historical-database'
+import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as BacktestingRouteImport } from './routes/backtesting'
 import { Route as ArbitrageCenterRouteImport } from './routes/arbitrage-center'
 import { Route as AlertsRouteImport } from './routes/alerts'
@@ -31,6 +33,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ValueAnalysisRoute = ValueAnalysisRouteImport.update({
   id: '/value-analysis',
   path: '/value-analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TeamsRoute = TeamsRouteImport.update({
@@ -88,6 +95,11 @@ const HistoricalDatabaseRoute = HistoricalDatabaseRouteImport.update({
   path: '/historical-database',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DesignSystemRoute = DesignSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BacktestingRoute = BacktestingRouteImport.update({
   id: '/backtesting',
   path: '/backtesting',
@@ -126,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof AlertsRoute
   '/arbitrage-center': typeof ArbitrageCenterRoute
   '/backtesting': typeof BacktestingRoute
+  '/design-system': typeof DesignSystemRoute
   '/historical-database': typeof HistoricalDatabaseRoute
   '/leagues': typeof LeaguesRoute
   '/live-odds': typeof LiveOddsRoute
@@ -137,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/system-status': typeof SystemStatusRoute
   '/teams': typeof TeamsRoute
+  '/timeline': typeof TimelineRoute
   '/value-analysis': typeof ValueAnalysisRoute
 }
 export interface FileRoutesByTo {
@@ -146,6 +160,7 @@ export interface FileRoutesByTo {
   '/alerts': typeof AlertsRoute
   '/arbitrage-center': typeof ArbitrageCenterRoute
   '/backtesting': typeof BacktestingRoute
+  '/design-system': typeof DesignSystemRoute
   '/historical-database': typeof HistoricalDatabaseRoute
   '/leagues': typeof LeaguesRoute
   '/live-odds': typeof LiveOddsRoute
@@ -157,6 +172,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/system-status': typeof SystemStatusRoute
   '/teams': typeof TeamsRoute
+  '/timeline': typeof TimelineRoute
   '/value-analysis': typeof ValueAnalysisRoute
 }
 export interface FileRoutesById {
@@ -167,6 +183,7 @@ export interface FileRoutesById {
   '/alerts': typeof AlertsRoute
   '/arbitrage-center': typeof ArbitrageCenterRoute
   '/backtesting': typeof BacktestingRoute
+  '/design-system': typeof DesignSystemRoute
   '/historical-database': typeof HistoricalDatabaseRoute
   '/leagues': typeof LeaguesRoute
   '/live-odds': typeof LiveOddsRoute
@@ -178,6 +195,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/system-status': typeof SystemStatusRoute
   '/teams': typeof TeamsRoute
+  '/timeline': typeof TimelineRoute
   '/value-analysis': typeof ValueAnalysisRoute
 }
 export interface FileRouteTypes {
@@ -189,6 +207,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/arbitrage-center'
     | '/backtesting'
+    | '/design-system'
     | '/historical-database'
     | '/leagues'
     | '/live-odds'
@@ -200,6 +219,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-status'
     | '/teams'
+    | '/timeline'
     | '/value-analysis'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -209,6 +229,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/arbitrage-center'
     | '/backtesting'
+    | '/design-system'
     | '/historical-database'
     | '/leagues'
     | '/live-odds'
@@ -220,6 +241,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-status'
     | '/teams'
+    | '/timeline'
     | '/value-analysis'
   id:
     | '__root__'
@@ -229,6 +251,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/arbitrage-center'
     | '/backtesting'
+    | '/design-system'
     | '/historical-database'
     | '/leagues'
     | '/live-odds'
@@ -240,6 +263,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-status'
     | '/teams'
+    | '/timeline'
     | '/value-analysis'
   fileRoutesById: FileRoutesById
 }
@@ -250,6 +274,7 @@ export interface RootRouteChildren {
   AlertsRoute: typeof AlertsRoute
   ArbitrageCenterRoute: typeof ArbitrageCenterRoute
   BacktestingRoute: typeof BacktestingRoute
+  DesignSystemRoute: typeof DesignSystemRoute
   HistoricalDatabaseRoute: typeof HistoricalDatabaseRoute
   LeaguesRoute: typeof LeaguesRoute
   LiveOddsRoute: typeof LiveOddsRoute
@@ -261,6 +286,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SystemStatusRoute: typeof SystemStatusRoute
   TeamsRoute: typeof TeamsRoute
+  TimelineRoute: typeof TimelineRoute
   ValueAnalysisRoute: typeof ValueAnalysisRoute
 }
 
@@ -271,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/value-analysis'
       fullPath: '/value-analysis'
       preLoaderRoute: typeof ValueAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/teams': {
@@ -350,6 +383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoricalDatabaseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/backtesting': {
       id: '/backtesting'
       path: '/backtesting'
@@ -402,6 +442,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlertsRoute: AlertsRoute,
   ArbitrageCenterRoute: ArbitrageCenterRoute,
   BacktestingRoute: BacktestingRoute,
+  DesignSystemRoute: DesignSystemRoute,
   HistoricalDatabaseRoute: HistoricalDatabaseRoute,
   LeaguesRoute: LeaguesRoute,
   LiveOddsRoute: LiveOddsRoute,
@@ -413,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SystemStatusRoute: SystemStatusRoute,
   TeamsRoute: TeamsRoute,
+  TimelineRoute: TimelineRoute,
   ValueAnalysisRoute: ValueAnalysisRoute,
 }
 export const routeTree = rootRouteImport

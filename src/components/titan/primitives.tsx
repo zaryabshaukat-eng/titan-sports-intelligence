@@ -53,13 +53,14 @@ export function StatCard({
 export function StatusPill({
   status, label,
 }: { status: "online" | "training" | "idle" | "offline" | "beta"; label?: string }) {
-  const map = {
+  const PILL_MAP: Record<string, { c: string; dot: string; t: string }> = {
     online:   { c: "text-emerald bg-emerald/10 border-emerald/20", dot: "bg-emerald", t: label ?? "Online" },
     training: { c: "text-primary bg-primary/10 border-primary/20", dot: "bg-primary", t: label ?? "Training" },
     idle:     { c: "text-muted-foreground bg-white/5 border-white/10", dot: "bg-muted-foreground", t: label ?? "Idle" },
     offline:  { c: "text-destructive bg-destructive/10 border-destructive/20", dot: "bg-destructive", t: label ?? "Offline" },
     beta:     { c: "text-warning bg-warning/10 border-warning/20", dot: "bg-warning", t: label ?? "Beta" },
-  }[status];
+  };
+  const map = PILL_MAP[status] ?? { c: "text-muted-foreground bg-white/5 border-white/10", dot: "bg-muted-foreground", t: label ?? status };
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${map.c}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${map.dot}`} />

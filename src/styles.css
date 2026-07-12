@@ -242,3 +242,110 @@
 [data-panel] {
   overflow: hidden;
 }
+
+/* ─── smooth layout transitions ──────────────── */
+@utility transition-layout {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+/* ─── dockable widget drag handle ────────────── */
+@utility drag-handle {
+  cursor: grab;
+  &:active { cursor: grabbing; }
+}
+
+/* ─── print styles ───────────────────────────── */
+@media print {
+  /* Hide non-content chrome */
+  aside,
+  header,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  body, html {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  /* Make glass cards print-friendly */
+  .glass, .glass-strong {
+    background: #f8f8f8 !important;
+    border: 1px solid #ddd !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Force full width for report content */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Page breaks */
+  section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3 {
+    color: black !important;
+    break-after: avoid;
+  }
+
+  table {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+}
+
+/* ─── responsive spacing helpers ─────────────── */
+@utility content-compact {
+  --content-padding: 1rem;
+}
+
+@utility content-comfortable {
+  --content-padding: 1.5rem;
+}
+
+/* ─── chart animation ─────────────────────────── */
+@utility animate-chart-in {
+  animation: chartIn 0.6s ease-out;
+}
+
+@keyframes chartIn {
+  from { opacity: 0; transform: scaleY(0.95); transform-origin: bottom; }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+
+/* ─── keyboard shortcut key styling ──────────── */
+@utility kbd-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 0.25rem;
+  background: oklch(1 0 0 / 0.05);
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.06);
+}
+
+/* ─── report viewer fullscreen ────────────────── */
+.report-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: oklch(0.14 0.02 260);
+  overflow: hidden;
+}
