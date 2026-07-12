@@ -9,20 +9,81 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ValueAnalysisRouteImport } from './routes/value-analysis'
+import { Route as TeamsRouteImport } from './routes/teams'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as PerformanceAnalyticsRouteImport } from './routes/performance-analytics'
 import { Route as MatchesRouteImport } from './routes/matches'
+import { Route as MarketIntelligenceRouteImport } from './routes/market-intelligence'
+import { Route as LiveOddsRouteImport } from './routes/live-odds'
+import { Route as LeaguesRouteImport } from './routes/leagues'
+import { Route as HistoricalDatabaseRouteImport } from './routes/historical-database'
+import { Route as BacktestingRouteImport } from './routes/backtesting'
+import { Route as ArbitrageCenterRouteImport } from './routes/arbitrage-center'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as AiIntelligenceRouteImport } from './routes/ai-intelligence'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ValueAnalysisRoute = ValueAnalysisRouteImport.update({
+  id: '/value-analysis',
+  path: '/value-analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsRoute = TeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceAnalyticsRoute = PerformanceAnalyticsRouteImport.update({
+  id: '/performance-analytics',
+  path: '/performance-analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchesRoute = MatchesRouteImport.update({
   id: '/matches',
   path: '/matches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketIntelligenceRoute = MarketIntelligenceRouteImport.update({
+  id: '/market-intelligence',
+  path: '/market-intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveOddsRoute = LiveOddsRouteImport.update({
+  id: '/live-odds',
+  path: '/live-odds',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaguesRoute = LeaguesRouteImport.update({
+  id: '/leagues',
+  path: '/leagues',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoricalDatabaseRoute = HistoricalDatabaseRouteImport.update({
+  id: '/historical-database',
+  path: '/historical-database',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BacktestingRoute = BacktestingRouteImport.update({
+  id: '/backtesting',
+  path: '/backtesting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArbitrageCenterRoute = ArbitrageCenterRouteImport.update({
+  id: '/arbitrage-center',
+  path: '/arbitrage-center',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlertsRoute = AlertsRouteImport.update({
@@ -35,6 +96,11 @@ const AiIntelligenceRoute = AiIntelligenceRouteImport.update({
   path: '/ai-intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,50 +109,151 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/ai-intelligence': typeof AiIntelligenceRoute
   '/alerts': typeof AlertsRoute
+  '/arbitrage-center': typeof ArbitrageCenterRoute
+  '/backtesting': typeof BacktestingRoute
+  '/historical-database': typeof HistoricalDatabaseRoute
+  '/leagues': typeof LeaguesRoute
+  '/live-odds': typeof LiveOddsRoute
+  '/market-intelligence': typeof MarketIntelligenceRoute
   '/matches': typeof MatchesRoute
+  '/performance-analytics': typeof PerformanceAnalyticsRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/teams': typeof TeamsRoute
+  '/value-analysis': typeof ValueAnalysisRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/ai-intelligence': typeof AiIntelligenceRoute
   '/alerts': typeof AlertsRoute
+  '/arbitrage-center': typeof ArbitrageCenterRoute
+  '/backtesting': typeof BacktestingRoute
+  '/historical-database': typeof HistoricalDatabaseRoute
+  '/leagues': typeof LeaguesRoute
+  '/live-odds': typeof LiveOddsRoute
+  '/market-intelligence': typeof MarketIntelligenceRoute
   '/matches': typeof MatchesRoute
+  '/performance-analytics': typeof PerformanceAnalyticsRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/teams': typeof TeamsRoute
+  '/value-analysis': typeof ValueAnalysisRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/ai-intelligence': typeof AiIntelligenceRoute
   '/alerts': typeof AlertsRoute
+  '/arbitrage-center': typeof ArbitrageCenterRoute
+  '/backtesting': typeof BacktestingRoute
+  '/historical-database': typeof HistoricalDatabaseRoute
+  '/leagues': typeof LeaguesRoute
+  '/live-odds': typeof LiveOddsRoute
+  '/market-intelligence': typeof MarketIntelligenceRoute
   '/matches': typeof MatchesRoute
+  '/performance-analytics': typeof PerformanceAnalyticsRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/teams': typeof TeamsRoute
+  '/value-analysis': typeof ValueAnalysisRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ai-intelligence' | '/alerts' | '/matches' | '/settings'
+  fullPaths:
+    | '/'
+    | '/account'
+    | '/ai-intelligence'
+    | '/alerts'
+    | '/arbitrage-center'
+    | '/backtesting'
+    | '/historical-database'
+    | '/leagues'
+    | '/live-odds'
+    | '/market-intelligence'
+    | '/matches'
+    | '/performance-analytics'
+    | '/reports'
+    | '/settings'
+    | '/teams'
+    | '/value-analysis'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ai-intelligence' | '/alerts' | '/matches' | '/settings'
+  to:
+    | '/'
+    | '/account'
+    | '/ai-intelligence'
+    | '/alerts'
+    | '/arbitrage-center'
+    | '/backtesting'
+    | '/historical-database'
+    | '/leagues'
+    | '/live-odds'
+    | '/market-intelligence'
+    | '/matches'
+    | '/performance-analytics'
+    | '/reports'
+    | '/settings'
+    | '/teams'
+    | '/value-analysis'
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/ai-intelligence'
     | '/alerts'
+    | '/arbitrage-center'
+    | '/backtesting'
+    | '/historical-database'
+    | '/leagues'
+    | '/live-odds'
+    | '/market-intelligence'
     | '/matches'
+    | '/performance-analytics'
+    | '/reports'
     | '/settings'
+    | '/teams'
+    | '/value-analysis'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   AiIntelligenceRoute: typeof AiIntelligenceRoute
   AlertsRoute: typeof AlertsRoute
+  ArbitrageCenterRoute: typeof ArbitrageCenterRoute
+  BacktestingRoute: typeof BacktestingRoute
+  HistoricalDatabaseRoute: typeof HistoricalDatabaseRoute
+  LeaguesRoute: typeof LeaguesRoute
+  LiveOddsRoute: typeof LiveOddsRoute
+  MarketIntelligenceRoute: typeof MarketIntelligenceRoute
   MatchesRoute: typeof MatchesRoute
+  PerformanceAnalyticsRoute: typeof PerformanceAnalyticsRoute
+  ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  TeamsRoute: typeof TeamsRoute
+  ValueAnalysisRoute: typeof ValueAnalysisRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/value-analysis': {
+      id: '/value-analysis'
+      path: '/value-analysis'
+      fullPath: '/value-analysis'
+      preLoaderRoute: typeof ValueAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams': {
+      id: '/teams'
+      path: '/teams'
+      fullPath: '/teams'
+      preLoaderRoute: typeof TeamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -94,11 +261,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance-analytics': {
+      id: '/performance-analytics'
+      path: '/performance-analytics'
+      fullPath: '/performance-analytics'
+      preLoaderRoute: typeof PerformanceAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/matches': {
       id: '/matches'
       path: '/matches'
       fullPath: '/matches'
       preLoaderRoute: typeof MatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market-intelligence': {
+      id: '/market-intelligence'
+      path: '/market-intelligence'
+      fullPath: '/market-intelligence'
+      preLoaderRoute: typeof MarketIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live-odds': {
+      id: '/live-odds'
+      path: '/live-odds'
+      fullPath: '/live-odds'
+      preLoaderRoute: typeof LiveOddsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leagues': {
+      id: '/leagues'
+      path: '/leagues'
+      fullPath: '/leagues'
+      preLoaderRoute: typeof LeaguesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historical-database': {
+      id: '/historical-database'
+      path: '/historical-database'
+      fullPath: '/historical-database'
+      preLoaderRoute: typeof HistoricalDatabaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/backtesting': {
+      id: '/backtesting'
+      path: '/backtesting'
+      fullPath: '/backtesting'
+      preLoaderRoute: typeof BacktestingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/arbitrage-center': {
+      id: '/arbitrage-center'
+      path: '/arbitrage-center'
+      fullPath: '/arbitrage-center'
+      preLoaderRoute: typeof ArbitrageCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alerts': {
@@ -115,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiIntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -127,10 +357,21 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   AiIntelligenceRoute: AiIntelligenceRoute,
   AlertsRoute: AlertsRoute,
+  ArbitrageCenterRoute: ArbitrageCenterRoute,
+  BacktestingRoute: BacktestingRoute,
+  HistoricalDatabaseRoute: HistoricalDatabaseRoute,
+  LeaguesRoute: LeaguesRoute,
+  LiveOddsRoute: LiveOddsRoute,
+  MarketIntelligenceRoute: MarketIntelligenceRoute,
   MatchesRoute: MatchesRoute,
+  PerformanceAnalyticsRoute: PerformanceAnalyticsRoute,
+  ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  TeamsRoute: TeamsRoute,
+  ValueAnalysisRoute: ValueAnalysisRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
