@@ -1,15 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
-import { PageHeader } from "../components/titan/AppShell";
 import {
-  Trophy, Search, Radio, Clock, Brain, ChevronDown, ChevronRight,
+  Search, Brain,
   Plus, Save, Bold, Italic, List, Code, AlignLeft, Maximize2,
-  Minimize2, Activity, Target, AlertTriangle, Zap, StickyNote,
-  BarChart3, MessageSquare, RefreshCw, PanelLeftClose, PanelLeftOpen,
+  StickyNote, RefreshCw, PanelLeftClose, PanelLeftOpen, Check,
 } from "lucide-react";
-import { GlassCard, StatusPill, SectionTitle } from "../components/titan/primitives";
-import { ConfidenceGauge, RiskMeter, TrendIndicator, HealthIndicator } from "../components/titan/ConfidenceWidgets";
+import { StatusPill } from "../components/titan/primitives";
+import { ConfidenceGauge, RiskMeter, TrendIndicator } from "../components/titan/ConfidenceWidgets";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 
 export const Route = createFileRoute("/research")({ component: ResearchPage });
 
@@ -81,13 +80,37 @@ function ToolbarButton({ icon: Icon, label, active }: { icon: React.ComponentTyp
   );
 }
 
+const DEFAULT_NOTE_CONTENT: Record<string, string> = {
+  n1: PLACEHOLDER_CONTENT,
+  n2: `# Bayern vs Dortmund — Live Model Notes\n\nTracking in-play xG divergence. Update every 5'.`,
+  n3: `# UCL R16 — Historical Pattern Summary\n\nAnalogous fixtures matched: 847. Base rate Over 2.5 = 61%.`,
+};
+
 function ResearchPage() {
   const [selectedMatch, setSelectedMatch] = useState(matches[0]);
   const [matchSearch, setMatchSearch] = useState("");
-  const [noteContent] = useState(PLACEHOLDER_CONTENT);
   const [activeNote, setActiveNote] = useState(notes[0].id);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [noteStore, setNoteStore] = useLocalStorage<Record<string, string>>(
+    "titan.research.notes.v1",
+    DEFAULT_NOTE_CONTENT
+  );
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  const noteContent = noteStore[activeNote] ?? DEFAULT_NOTE_CONTENT[activeNote] ?? "";
+
+  const updateNote = (value: string) => {
+    setNoteStore((prev) => ({ ...prev, [activeNote]: value }));
+  };
+  const flashSaved = () => {
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1200);
+  };
+
+  const wordCount = useMemo(
+    () => noteContent.trim().split(/\s+/).filter(Boolean).length,
+    [noteContent]
+  );
 
   const filteredMatches = matches.filter(
     (m) =>
@@ -112,8 +135,12 @@ function ResearchPage() {
           >
             {leftCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
           </button>
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
-            <Save className="h-3.5 w-3.5" /> Save
+          <button
+            onClick={flashSaved}
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {savedFlash ? <Check className="h-3.5 w-3.5 text-emerald" /> : <Save className="h-3.5 w-3.5" />}
+            {savedFlash ? "Saved" : "Save"}
           </button>
           <button className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
             <Plus className="h-3.5 w-3.5" /> New Note
@@ -218,9 +245,12 @@ function ResearchPage() {
               {/* Editor area */}
               <div className="flex-1 overflow-y-auto p-5">
                 <textarea
-                  defaultValue={noteContent}
+                  key={activeNote}
+                  value={noteContent}
+                  onChange={(e) => updateNote(e.target.value)}
                   className="h-full w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-foreground/90 focus:outline-none placeholder:text-muted-foreground"
                   spellCheck={false}
+                  aria-label="Note editor"
                 />
               </div>
 
@@ -229,17 +259,23 @@ function ResearchPage() {
                 <div className="flex items-center gap-3">
                   <span>Markdown</span>
                   <span>·</span>
-                  <span>Auto-saved 2m ago</span>
+                  <span className={savedFlash ? "text-emerald" : ""}>
+                    {savedFlash ? "Saved" : "Auto-saved to this device"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span>342 words</span>
-                  <button className="inline-flex items-center gap-1 rounded border border-white/5 bg-white/5 px-1.5 py-0.5 hover:text-foreground">
+                  <span>{wordCount} words</span>
+                  <button
+                    onClick={flashSaved}
+                    className="inline-flex items-center gap-1 rounded border border-white/5 bg-white/5 px-1.5 py-0.5 hover:text-foreground"
+                  >
                     <Save className="h-3 w-3" /> Save
                   </button>
                 </div>
               </div>
             </div>
           </Panel>
+
 
           <PanelResizeHandle className="w-px bg-white/5 hover:bg-primary/30 transition-colors cursor-col-resize" />
 
