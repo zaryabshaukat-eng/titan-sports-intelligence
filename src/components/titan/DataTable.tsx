@@ -126,11 +126,13 @@ export function DataTable<T extends Record<string, unknown>>({
       <div className="flex flex-wrap items-center gap-2">
         {searchable && (
           <div className="relative min-w-52 flex-1">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+              role="searchbox"
               className="h-9 w-full rounded-md border border-white/5 bg-white/5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -138,24 +140,27 @@ export function DataTable<T extends Record<string, unknown>>({
         {toolbar}
         <div className="ml-auto flex items-center gap-2">
           {/* Density toggle */}
-          <div className="flex items-center gap-1 rounded-md border border-white/5 bg-white/5 p-0.5">
+          <div role="group" aria-label="Row density" className="flex items-center gap-1 rounded-md border border-white/5 bg-white/5 p-0.5">
             {(["compact", "default", "comfortable"] as const).map((d) => (
               <button
                 key={d}
                 onClick={() => setDensity(d)}
-                title={d}
+                aria-label={`${d} density`}
+                aria-pressed={density === d}
+                title={`${d.charAt(0).toUpperCase() + d.slice(1)} density`}
                 className={`rounded px-2 py-1 transition-colors ${density === d ? "bg-white/10 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                {d === "compact" ? <AlignLeft className="h-3.5 w-3.5" /> : d === "comfortable" ? <AlignJustify className="h-3.5 w-3.5" /> : <AlignJustify className="h-3.5 w-3.5" />}
+                {d === "compact" ? <AlignLeft className="h-3.5 w-3.5" aria-hidden="true" /> : <AlignJustify className="h-3.5 w-3.5" aria-hidden="true" />}
               </button>
             ))}
           </div>
           {exportable && (
             <button
               onClick={exportCsv}
-              className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Export table data as CSV"
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors btn-press"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
               Export CSV
             </button>
           )}
@@ -175,20 +180,27 @@ export function DataTable<T extends Record<string, unknown>>({
       {/* Table */}
       <div className="glass rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" role="grid" aria-rowcount={sorted.length}>
             <thead className="sticky top-0 z-10 border-b border-white/5 bg-[oklch(0.15_0.025_260)] text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="w-10 px-4 py-3">
+              <tr role="row">
+                <th className="w-10 px-4 py-3" scope="col">
                   <input
                     type="checkbox"
                     checked={selected.size === paginated.length && paginated.length > 0}
                     onChange={handleSelectAll}
+                    aria-label="Select all rows on this page"
                     className="rounded border-white/10 bg-white/5 accent-primary"
                   />
                 </th>
                 {columns.map((col) => (
                   <th
                     key={col.key as string}
+                    scope="col"
+                    aria-sort={
+                      sortKey === col.key
+                        ? sortDir === "asc" ? "ascending" : "descending"
+                        : col.sortable !== false ? "none" : undefined
+                    }
                     className={`py-3 font-semibold ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"} ${col.sortable !== false ? "cursor-pointer select-none hover:text-foreground" : ""} ${col.width ? `w-[${col.width}]` : ""}`}
                     style={col.width ? { width: col.width } : undefined}
                     onClick={() => col.sortable !== false && handleSort(col.key as string)}

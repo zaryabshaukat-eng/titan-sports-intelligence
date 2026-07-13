@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import {
   TrendingUp, Brain, FlaskConical, Cpu, Bell, CheckCircle2,
   BookOpen, ChevronDown, ChevronRight, Filter, Calendar,
@@ -148,7 +148,7 @@ export interface TimelineProps {
   maxHeight?: string;
 }
 
-export function Timeline({
+export const Timeline = memo(function Timeline({
   events = SAMPLE_TIMELINE,
   showFilters = true,
   showGrouping = true,
@@ -267,4 +267,4 @@ export function Timeline({
       </div>
     </div>
   );
-}
+});

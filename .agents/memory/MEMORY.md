@@ -1,0 +1,5 @@
+- [react-resizable-panels v4 API](react-resizable-panels-v4.md) — exports are Group/Panel/Separator (not PanelGroup/PanelResizeHandle); orientation prop not direction.
+- [TanStack Router code-splitter export loss](tsr-code-split-export.md) — module-level exported consts (e.g. SAMPLE_TIMELINE) can be undefined inside ?tsr-split=component; fix by dropping the prop and using the component's own default.
+- [StatusPill null-safety](statuspill-safety.md) — always use a ?? fallback when indexing a status map, never assume all passed values are valid.
+- [Theme system](theme-system.md) — four themes applied via data-theme attr on html; ThemeProvider in src/components/titan/ThemeProvider.tsx; persisted to localStorage key titan_theme.
+- [data-tsd-source hydration warning](tsd-hydration.md) — cosmetic TanStack devtools annotation difference between SSR and client; harmless, not a real bug.
