@@ -80,13 +80,37 @@ function ToolbarButton({ icon: Icon, label, active }: { icon: React.ComponentTyp
   );
 }
 
+const DEFAULT_NOTE_CONTENT: Record<string, string> = {
+  n1: PLACEHOLDER_CONTENT,
+  n2: `# Bayern vs Dortmund — Live Model Notes\n\nTracking in-play xG divergence. Update every 5'.`,
+  n3: `# UCL R16 — Historical Pattern Summary\n\nAnalogous fixtures matched: 847. Base rate Over 2.5 = 61%.`,
+};
+
 function ResearchPage() {
   const [selectedMatch, setSelectedMatch] = useState(matches[0]);
   const [matchSearch, setMatchSearch] = useState("");
-  const [noteContent] = useState(PLACEHOLDER_CONTENT);
   const [activeNote, setActiveNote] = useState(notes[0].id);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [noteStore, setNoteStore] = useLocalStorage<Record<string, string>>(
+    "titan.research.notes.v1",
+    DEFAULT_NOTE_CONTENT
+  );
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  const noteContent = noteStore[activeNote] ?? DEFAULT_NOTE_CONTENT[activeNote] ?? "";
+
+  const updateNote = (value: string) => {
+    setNoteStore((prev) => ({ ...prev, [activeNote]: value }));
+  };
+  const flashSaved = () => {
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1200);
+  };
+
+  const wordCount = useMemo(
+    () => noteContent.trim().split(/\s+/).filter(Boolean).length,
+    [noteContent]
+  );
 
   const filteredMatches = matches.filter(
     (m) =>
