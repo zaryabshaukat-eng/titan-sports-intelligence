@@ -6,7 +6,7 @@ import {
   Plus, Save, Bold, Italic, List, Code, AlignLeft, Maximize2,
   StickyNote, RefreshCw, PanelLeftClose, PanelLeftOpen, Check,
 } from "lucide-react";
-import { GlassCard, StatusPill } from "../components/titan/primitives";
+import { StatusPill } from "../components/titan/primitives";
 import { ConfidenceGauge, RiskMeter, TrendIndicator } from "../components/titan/ConfidenceWidgets";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 
