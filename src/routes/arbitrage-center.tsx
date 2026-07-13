@@ -76,14 +76,14 @@ function Arb() {
           </GlassCard>
         ) : (
           filtered.map((a, i) => (
-            <GlassCard
+            <div
               key={a.match}
               ref={setRowRef(i)}
               tabIndex={focused === i ? 0 : -1}
               role="row"
               aria-selected={focused === i}
               onFocus={() => setFocused(i)}
-              className={`p-5 outline-none transition-all focus:ring-2 focus:ring-primary/40 ${focused === i ? "ring-1 ring-primary/30" : ""}`}
+              className={`glass rounded-xl p-5 outline-none transition-all focus:ring-2 focus:ring-primary/40 ${focused === i ? "ring-1 ring-primary/30" : ""}`}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -96,7 +96,7 @@ function Arb() {
                   <div className="font-display text-2xl font-bold text-emerald">+{a.roi.toFixed(1)}%</div>
                 </div>
               </div>
-            </GlassCard>
+            </div>
           ))
         )}
       </div>
