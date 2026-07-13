@@ -245,9 +245,12 @@ function ResearchPage() {
               {/* Editor area */}
               <div className="flex-1 overflow-y-auto p-5">
                 <textarea
-                  defaultValue={noteContent}
+                  key={activeNote}
+                  value={noteContent}
+                  onChange={(e) => updateNote(e.target.value)}
                   className="h-full w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-foreground/90 focus:outline-none placeholder:text-muted-foreground"
                   spellCheck={false}
+                  aria-label="Note editor"
                 />
               </div>
 
@@ -256,17 +259,23 @@ function ResearchPage() {
                 <div className="flex items-center gap-3">
                   <span>Markdown</span>
                   <span>·</span>
-                  <span>Auto-saved 2m ago</span>
+                  <span className={savedFlash ? "text-emerald" : ""}>
+                    {savedFlash ? "Saved" : "Auto-saved to this device"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span>342 words</span>
-                  <button className="inline-flex items-center gap-1 rounded border border-white/5 bg-white/5 px-1.5 py-0.5 hover:text-foreground">
+                  <span>{wordCount} words</span>
+                  <button
+                    onClick={flashSaved}
+                    className="inline-flex items-center gap-1 rounded border border-white/5 bg-white/5 px-1.5 py-0.5 hover:text-foreground"
+                  >
                     <Save className="h-3 w-3" /> Save
                   </button>
                 </div>
               </div>
             </div>
           </Panel>
+
 
           <PanelResizeHandle className="w-px bg-white/5 hover:bg-primary/30 transition-colors cursor-col-resize" />
 
