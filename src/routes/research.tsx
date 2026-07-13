@@ -1,15 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
-import { PageHeader } from "../components/titan/AppShell";
 import {
-  Trophy, Search, Radio, Clock, Brain, ChevronDown, ChevronRight,
+  Search, Brain,
   Plus, Save, Bold, Italic, List, Code, AlignLeft, Maximize2,
-  Minimize2, Activity, Target, AlertTriangle, Zap, StickyNote,
-  BarChart3, MessageSquare, RefreshCw, PanelLeftClose, PanelLeftOpen,
+  StickyNote, RefreshCw, PanelLeftClose, PanelLeftOpen, Check,
 } from "lucide-react";
-import { GlassCard, StatusPill, SectionTitle } from "../components/titan/primitives";
-import { ConfidenceGauge, RiskMeter, TrendIndicator, HealthIndicator } from "../components/titan/ConfidenceWidgets";
+import { GlassCard, StatusPill } from "../components/titan/primitives";
+import { ConfidenceGauge, RiskMeter, TrendIndicator } from "../components/titan/ConfidenceWidgets";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 
 export const Route = createFileRoute("/research")({ component: ResearchPage });
 
