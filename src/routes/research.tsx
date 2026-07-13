@@ -135,8 +135,12 @@ function ResearchPage() {
           >
             {leftCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
           </button>
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
-            <Save className="h-3.5 w-3.5" /> Save
+          <button
+            onClick={flashSaved}
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {savedFlash ? <Check className="h-3.5 w-3.5 text-emerald" /> : <Save className="h-3.5 w-3.5" />}
+            {savedFlash ? "Saved" : "Save"}
           </button>
           <button className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
             <Plus className="h-3.5 w-3.5" /> New Note
