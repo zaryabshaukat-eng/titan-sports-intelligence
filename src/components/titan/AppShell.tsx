@@ -3,14 +3,15 @@ import { type ReactNode, useEffect, useState, useCallback, useRef } from "react"
 import {
   LayoutDashboard, Trophy, Users, Radio, LineChart, Database, Brain,
   Target, Shuffle, History, BarChart3, Bell, FileText, Settings, UserCircle,
-  Command, Search, Zap, ChevronRight, FlaskConical, MonitorCheck,
-  Activity, Menu, X, Clock, Palette, PanelLeftClose, PanelLeftOpen, Keyboard, Check,
+  Command, Zap, ChevronRight, FlaskConical, MonitorCheck,
+  Activity, Menu, X, Clock, Palette, PanelLeftClose, PanelLeftOpen, Keyboard, Check, Cpu,
 } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationCenter } from "./NotificationCenter";
 import { LiveActivityCenter } from "./LiveActivityCenter";
 import { KeyboardShortcutsModal, useKeyboardShortcuts } from "./KeyboardShortcuts";
 import { useTheme, THEMES } from "./ThemeProvider";
+import { UniversalSearch } from "./UniversalSearch";
 
 const nav = [
   { group: "Overview", items: [
@@ -26,6 +27,7 @@ const nav = [
   ]},
   { group: "Intelligence", items: [
     { to: "/ai-intelligence",    label: "AI Intelligence",    icon: Brain },
+    { to: "/ai-engines",         label: "Engine Monitor",     icon: Cpu },
     { to: "/value-analysis",     label: "Value Analysis",     icon: Target },
     { to: "/arbitrage-center",   label: "Arbitrage Center",   icon: Shuffle },
     { to: "/backtesting",        label: "Backtesting",        icon: History },
