@@ -27,7 +27,6 @@ import { Route as BacktestingRouteImport } from './routes/backtesting'
 import { Route as ArbitrageCenterRouteImport } from './routes/arbitrage-center'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as AiIntelligenceRouteImport } from './routes/ai-intelligence'
-import { Route as AiEnginesRouteImport } from './routes/ai-engines'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -121,11 +120,6 @@ const AiIntelligenceRoute = AiIntelligenceRouteImport.update({
   path: '/ai-intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AiEnginesRoute = AiEnginesRouteImport.update({
-  id: '/ai-engines',
-  path: '/ai-engines',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -140,7 +134,6 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/ai-engines': typeof AiEnginesRoute
   '/ai-intelligence': typeof AiIntelligenceRoute
   '/alerts': typeof AlertsRoute
   '/arbitrage-center': typeof ArbitrageCenterRoute
@@ -163,7 +156,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/ai-engines': typeof AiEnginesRoute
   '/ai-intelligence': typeof AiIntelligenceRoute
   '/alerts': typeof AlertsRoute
   '/arbitrage-center': typeof ArbitrageCenterRoute
@@ -187,7 +179,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/ai-engines': typeof AiEnginesRoute
   '/ai-intelligence': typeof AiIntelligenceRoute
   '/alerts': typeof AlertsRoute
   '/arbitrage-center': typeof ArbitrageCenterRoute
@@ -212,7 +203,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
-    | '/ai-engines'
     | '/ai-intelligence'
     | '/alerts'
     | '/arbitrage-center'
@@ -235,7 +225,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
-    | '/ai-engines'
     | '/ai-intelligence'
     | '/alerts'
     | '/arbitrage-center'
@@ -258,7 +247,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
-    | '/ai-engines'
     | '/ai-intelligence'
     | '/alerts'
     | '/arbitrage-center'
@@ -282,7 +270,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
-  AiEnginesRoute: typeof AiEnginesRoute
   AiIntelligenceRoute: typeof AiIntelligenceRoute
   AlertsRoute: typeof AlertsRoute
   ArbitrageCenterRoute: typeof ArbitrageCenterRoute
@@ -431,13 +418,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiIntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ai-engines': {
-      id: '/ai-engines'
-      path: '/ai-engines'
-      fullPath: '/ai-engines'
-      preLoaderRoute: typeof AiEnginesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/account': {
       id: '/account'
       path: '/account'
@@ -458,7 +438,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
-  AiEnginesRoute: AiEnginesRoute,
   AiIntelligenceRoute: AiIntelligenceRoute,
   AlertsRoute: AlertsRoute,
   ArbitrageCenterRoute: ArbitrageCenterRoute,

@@ -107,7 +107,7 @@ function DesignSystemPage() {
                 ))}
               </div>
               <div className="mt-4 space-y-2">
-                {(["online","idle","training","beta"] as const).map((s) => (
+                {(["online","degraded","training","beta"] as const).map((s) => (
                   <StatusPill key={s} status={s} />
                 ))}
               </div>
