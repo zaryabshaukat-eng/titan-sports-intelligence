@@ -1,1 +1,1 @@
-"""Future canonical sports domain boundary."""
+"""Canonical, provider-neutral Sports bounded context."""
