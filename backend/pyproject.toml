@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "titan-core"
+version = "0.1.0"
+description = "TITAN OS backend foundation."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "TITAN Engineering" }]
+dependencies = [
+  "alembic>=1.13,<2.0",
+  "asyncpg>=0.29,<1.0",
+  "fastapi>=0.115,<1.0",
+  "prometheus-client>=0.20,<1.0",
+  "pydantic-settings>=2.4,<3.0",
+  "redis>=5.0,<6.0",
+  "sqlalchemy[asyncio]>=2.0,<3.0",
+  "uvicorn[standard]>=0.30,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27,<1.0",
+  "pytest>=8.2,<9.0",
+  "ruff>=0.6,<1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["app/tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

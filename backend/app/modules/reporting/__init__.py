@@ -1,0 +1,1 @@
+"""Future reporting domain boundary."""

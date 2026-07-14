@@ -1,0 +1,1 @@
+"""Future risk domain boundary."""

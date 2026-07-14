@@ -1,0 +1,1 @@
+"""Future notifications domain boundary."""
