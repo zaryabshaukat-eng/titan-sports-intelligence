@@ -21,6 +21,7 @@ import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as MarketIntelligenceRouteImport } from './routes/market-intelligence'
 import { Route as LiveOddsRouteImport } from './routes/live-odds'
 import { Route as LeaguesRouteImport } from './routes/leagues'
+import { Route as IntelligenceHubRouteImport } from './routes/intelligence-hub'
 import { Route as HistoricalDatabaseRouteImport } from './routes/historical-database'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as BacktestingRouteImport } from './routes/backtesting'
@@ -90,6 +91,11 @@ const LeaguesRoute = LeaguesRouteImport.update({
   path: '/leagues',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntelligenceHubRoute = IntelligenceHubRouteImport.update({
+  id: '/intelligence-hub',
+  path: '/intelligence-hub',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoricalDatabaseRoute = HistoricalDatabaseRouteImport.update({
   id: '/historical-database',
   path: '/historical-database',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/backtesting': typeof BacktestingRoute
   '/design-system': typeof DesignSystemRoute
   '/historical-database': typeof HistoricalDatabaseRoute
+  '/intelligence-hub': typeof IntelligenceHubRoute
   '/leagues': typeof LeaguesRoute
   '/live-odds': typeof LiveOddsRoute
   '/market-intelligence': typeof MarketIntelligenceRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/backtesting': typeof BacktestingRoute
   '/design-system': typeof DesignSystemRoute
   '/historical-database': typeof HistoricalDatabaseRoute
+  '/intelligence-hub': typeof IntelligenceHubRoute
   '/leagues': typeof LeaguesRoute
   '/live-odds': typeof LiveOddsRoute
   '/market-intelligence': typeof MarketIntelligenceRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/backtesting': typeof BacktestingRoute
   '/design-system': typeof DesignSystemRoute
   '/historical-database': typeof HistoricalDatabaseRoute
+  '/intelligence-hub': typeof IntelligenceHubRoute
   '/leagues': typeof LeaguesRoute
   '/live-odds': typeof LiveOddsRoute
   '/market-intelligence': typeof MarketIntelligenceRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/backtesting'
     | '/design-system'
     | '/historical-database'
+    | '/intelligence-hub'
     | '/leagues'
     | '/live-odds'
     | '/market-intelligence'
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/backtesting'
     | '/design-system'
     | '/historical-database'
+    | '/intelligence-hub'
     | '/leagues'
     | '/live-odds'
     | '/market-intelligence'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/backtesting'
     | '/design-system'
     | '/historical-database'
+    | '/intelligence-hub'
     | '/leagues'
     | '/live-odds'
     | '/market-intelligence'
@@ -276,6 +288,7 @@ export interface RootRouteChildren {
   BacktestingRoute: typeof BacktestingRoute
   DesignSystemRoute: typeof DesignSystemRoute
   HistoricalDatabaseRoute: typeof HistoricalDatabaseRoute
+  IntelligenceHubRoute: typeof IntelligenceHubRoute
   LeaguesRoute: typeof LeaguesRoute
   LiveOddsRoute: typeof LiveOddsRoute
   MarketIntelligenceRoute: typeof MarketIntelligenceRoute
@@ -376,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaguesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/intelligence-hub': {
+      id: '/intelligence-hub'
+      path: '/intelligence-hub'
+      fullPath: '/intelligence-hub'
+      preLoaderRoute: typeof IntelligenceHubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/historical-database': {
       id: '/historical-database'
       path: '/historical-database'
@@ -444,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   BacktestingRoute: BacktestingRoute,
   DesignSystemRoute: DesignSystemRoute,
   HistoricalDatabaseRoute: HistoricalDatabaseRoute,
+  IntelligenceHubRoute: IntelligenceHubRoute,
   LeaguesRoute: LeaguesRoute,
   LiveOddsRoute: LiveOddsRoute,
   MarketIntelligenceRoute: MarketIntelligenceRoute,

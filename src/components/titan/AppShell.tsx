@@ -5,6 +5,7 @@ import {
   Target, Shuffle, History, BarChart3, Bell, FileText, Settings, UserCircle,
   Command, Search, Zap, ChevronRight, FlaskConical, MonitorCheck,
   Activity, Menu, X, Clock, Palette, PanelLeftClose, PanelLeftOpen, Keyboard, Check,
+  Satellite,
 } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationCenter } from "./NotificationCenter";
@@ -14,6 +15,7 @@ import { useTheme, THEMES } from "./ThemeProvider";
 
 const nav = [
   { group: "Overview", items: [
+    { to: "/intelligence-hub",   label: "Intelligence Hub",   icon: Satellite },
     { to: "/",                   label: "Dashboard",          icon: LayoutDashboard },
     { to: "/matches",            label: "Matches",            icon: Trophy },
     { to: "/leagues",            label: "Leagues",            icon: Trophy },
