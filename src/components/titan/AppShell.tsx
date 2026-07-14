@@ -5,13 +5,15 @@ import {
   Target, Shuffle, History, BarChart3, Bell, FileText, Settings, UserCircle,
   Command, Search, Zap, ChevronRight, FlaskConical, MonitorCheck,
   Activity, Menu, X, Clock, Palette, PanelLeftClose, PanelLeftOpen, Keyboard, Check,
-  Satellite,
+  Satellite, Map,
 } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationCenter } from "./NotificationCenter";
 import { LiveActivityCenter } from "./LiveActivityCenter";
 import { KeyboardShortcutsModal, useKeyboardShortcuts } from "./KeyboardShortcuts";
 import { useTheme, THEMES } from "./ThemeProvider";
+import { GuidedTour, shouldShowTour, resetTour } from "./GuidedTour";
+import { QuickActions } from "./QuickActions";
 
 const nav = [
   { group: "Overview", items: [
@@ -64,6 +66,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [shortcutsOpen,    setShortcutsOpen]    = useState(false);
   const [mobileNavOpen,    setMobileNavOpen]    = useState(false);
   const [themePickerOpen,  setThemePickerOpen]  = useState(false);
+  // tourOpen must start false for SSR/hydration parity; useEffect sets it to true if first visit
+  const [tourOpen,         setTourOpen]         = useState(false);
+  const [tourHighlight,    setTourHighlight]    = useState<string | null>(null);
+  const [mounted,          setMounted]          = useState(false);
   const [notifCount] = useState(4);
   const themePickerRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
@@ -82,6 +88,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     onOpenCommandPalette: () => setCmdOpen(true),
     onToggleShortcuts: () => setShortcutsOpen((v) => !v),
   });
+
+  // Check tour status after mount (localStorage only available on client)
+  useEffect(() => {
+    setMounted(true);
+    if (shouldShowTour()) setTourOpen(true);
+  }, []);
 
   // Close mobile nav on route change
   useEffect(() => { setMobileNavOpen(false); }, [pathname]);
@@ -145,6 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const active = pathname === item.to;
+                const highlighted = tourHighlight === item.to;
                 const Icon = item.icon;
                 return (
                   <Link
@@ -158,13 +171,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                     } ${
                       active
                         ? "bg-primary/10 text-foreground shadow-[inset_0_0_0_1px_oklch(0.72_0.19_245/0.25)]"
+                        : highlighted
+                        ? "bg-primary/[0.07] text-foreground ring-1 ring-primary/40 ring-inset"
                         : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                     }`}
                   >
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : ""}`} aria-hidden="true" />
+                    <Icon className={`h-4 w-4 shrink-0 ${active || highlighted ? "text-primary" : ""}`} aria-hidden="true" />
                     {!collapsed && (
                       <>
                         <span className="flex-1 truncate">{item.label}</span>
+                        {highlighted && !active && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+                        )}
                         {active && <ChevronRight className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
                       </>
                     )}
@@ -183,11 +201,22 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             onClick={() => setShortcutsOpen(true)}
             aria-label="Open keyboard shortcuts (?)"
-            className="mb-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors btn-press"
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors btn-press"
           >
             <Keyboard className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Keyboard shortcuts</span>
             <kbd className="ml-auto rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px]" aria-hidden="true">?</kbd>
+          </button>
+        )}
+        {/* Guided tour replay */}
+        {!collapsed && (
+          <button
+            onClick={() => { resetTour(); setTourOpen(true); }}
+            aria-label="Replay onboarding tour"
+            className="mb-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors btn-press"
+          >
+            <Map className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Take a tour</span>
           </button>
         )}
         <div className={`glass rounded-lg p-3 ${collapsed ? "hidden" : ""}`} role="status" aria-live="polite">
@@ -214,6 +243,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <NotificationCenter open={notifOpen} onClose={() => setNotifOpen(false)} />
       <LiveActivityCenter open={activityOpen} onClose={() => setActivityOpen(false)} />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <GuidedTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onHighlight={setTourHighlight}
+      />
+      {mounted && <QuickActions />}
 
       {/* G-chord indicator */}
       {gPressed && (

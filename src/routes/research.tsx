@@ -368,9 +368,9 @@ function ResearchPage() {
       <div className="flex-1 overflow-hidden">
         <PanelGroup
           ref={panelGroupRef}
-          direction="horizontal"
+          orientation="horizontal"
           className="h-full"
-          onLayout={(sizes) => saveLayout(sizes)}
+          onLayout={(sizes) => saveLayout(sizes as [number, number, number])}
         >
           {/* LEFT — Match Explorer */}
           {!leftCollapsed && (
@@ -392,31 +392,52 @@ function ResearchPage() {
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto py-1">
-                    {filteredMatches.map((m) => {
-                      const active = selectedMatch.home === m.home && selectedMatch.away === m.away;
-                      return (
+                    {filteredMatches.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+                        <div className="grid h-10 w-10 place-items-center rounded-full bg-white/5">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium">No matches found</div>
+                          <div className="mt-1 text-[10px] text-muted-foreground leading-relaxed">
+                            No fixtures match <span className="font-mono text-foreground">"{matchSearch}"</span>.
+                            Try a team name or competition.
+                          </div>
+                        </div>
                         <button
-                          key={`${m.home}-${m.away}`}
-                          onClick={() => setSelectedMatch(m)}
-                          className={`w-full text-left px-3 py-2.5 transition-colors ${active ? "bg-primary/10" : "hover:bg-white/[0.03]"}`}
+                          onClick={() => setMatchSearch("")}
+                          className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{m.comp}</span>
-                            <span className={`text-[9px] font-mono ${m.ko.includes("LIVE") ? "text-emerald" : "text-muted-foreground"}`}>{m.ko}</span>
-                          </div>
-                          <div className="text-xs font-medium leading-tight">
-                            {m.home} <span className="text-muted-foreground">vs</span> {m.away}
-                          </div>
-                          <div className="mt-1 flex items-center gap-2">
-                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/5">
-                              <div className="h-full rounded-full bg-gradient-to-r from-primary to-emerald" style={{ width: `${m.conf}%` }} />
-                            </div>
-                            <span className="font-mono text-[9px] text-muted-foreground">{m.conf}</span>
-                            <span className="text-[9px] font-mono text-emerald">{m.ev}</span>
-                          </div>
+                          Clear filter
                         </button>
-                      );
-                    })}
+                      </div>
+                    ) : (
+                      filteredMatches.map((m) => {
+                        const active = selectedMatch.home === m.home && selectedMatch.away === m.away;
+                        return (
+                          <button
+                            key={`${m.home}-${m.away}`}
+                            onClick={() => setSelectedMatch(m)}
+                            className={`w-full text-left px-3 py-2.5 transition-colors ${active ? "bg-primary/10" : "hover:bg-white/[0.03]"}`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{m.comp}</span>
+                              <span className={`text-[9px] font-mono ${m.ko.includes("LIVE") ? "text-emerald" : "text-muted-foreground"}`}>{m.ko}</span>
+                            </div>
+                            <div className="text-xs font-medium leading-tight">
+                              {m.home} <span className="text-muted-foreground">vs</span> {m.away}
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/5">
+                                <div className="h-full rounded-full bg-gradient-to-r from-primary to-emerald" style={{ width: `${m.conf}%` }} />
+                              </div>
+                              <span className="font-mono text-[9px] text-muted-foreground">{m.conf}</span>
+                              <span className="text-[9px] font-mono text-emerald">{m.ev}</span>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </Panel>
