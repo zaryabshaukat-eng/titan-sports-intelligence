@@ -1,1 +1,1 @@
-"""Future data-ingestion domain boundary."""
+"""Provider-neutral, auditable ingestion bounded context for TITAN Core."""

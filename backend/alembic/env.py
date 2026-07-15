@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from app.core.config import get_settings
+from app.modules.ingestion import models as ingestion_models  # noqa: F401
 from app.modules.sports import models as sports_models  # noqa: F401
 from app.shared.persistence.base import Base
 

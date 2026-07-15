@@ -17,6 +17,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, RequestLoggingMiddleware
 from app.core.observability import create_metrics
 from app.core.security import SecurityHeadersMiddleware
+from app.modules.ingestion.providers.registry import build_default_registry
 from app.shared.persistence.database import DatabaseSessionManager
 from app.shared.redis import RedisClient
 
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.database = DatabaseSessionManager(settings.database_url)
     app.state.redis = RedisClient(settings.redis_url)
     app.state.token_verifier = None
+    app.state.fixture_provider_registry = build_default_registry()
 
     try:
         yield
@@ -56,7 +58,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {
                 "name": "System",
                 "description": "Platform liveness and operational endpoints.",
-            }
+            },
+            {
+                "name": "Sports Domain",
+                "description": "Read-only canonical sports reference data and fixtures.",
+            },
+            {
+                "name": "Fixture Ingestion",
+                "description": "Protected provider-neutral fixture import operations.",
+            },
         ],
         lifespan=lifespan,
     )

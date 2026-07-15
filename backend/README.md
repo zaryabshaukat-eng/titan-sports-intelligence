@@ -1,8 +1,8 @@
-# TITAN Core Backend Foundation
+# TITAN Core Backend
 
-This directory contains only the Phase 2.2 backend foundation for TITAN OS. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, authentication extension points, observability, and initial tests.
+This directory contains the TITAN OS backend foundation and the Phase 2.3.2 Fixture Ingestion Pipeline. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, authentication extension points, observability, canonical Sports Domain, and auditable provider-neutral fixture ingestion.
 
-It intentionally contains no fixture ingestion, odds, statistics, research, machine learning, probability, consensus, risk, recommendation, or backtesting implementation.
+It intentionally contains no odds, statistics, research, machine learning, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
 
 ## Prerequisites
 
@@ -41,9 +41,22 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 For a local process, start PostgreSQL and Redis through Docker Compose first, then keep the `TITAN_DATABASE_URL` and `TITAN_REDIS_URL` values from `.env.example`.
 
+## Fixture ingestion
+
+The protected internal endpoint accepts a batch of raw provider payloads:
+
+```text
+POST /api/v1/ingestion/fixtures/fixture_feed_v1
+Authorization: Bearer <configured-token>
+```
+
+Its response is a per-payload summary of inserted, updated, unchanged, and validation-failed outcomes. The full raw JSON is kept only in PostgreSQL for auditability; it is never echoed by the API.
+
+`fixture_feed_v1` is a reference adapter and demonstrates the expected provider-specific contract. Follow [the ingestion module guide](app/modules/ingestion/README.md) to add a new provider adapter without changing canonical Sports Domain models or ingestion business logic.
+
 ## Database migrations
 
-Alembic includes the initial canonical Sports Domain migration. Future bounded modules must add their own reviewed migrations rather than modifying this historical revision.
+Alembic includes the canonical Sports Domain migration and the Fixture Ingestion Pipeline migration. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
 
 ```powershell
 alembic upgrade head
