@@ -7,7 +7,6 @@ leaving HTTP serialization and status-code decisions to the API adapter.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, TypeVar
 from uuid import UUID
 
 from sqlalchemy import Select, func, select
@@ -16,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.sports.models import (
     Competition,
     Country,
+    CountryTimezone,
     Fixture,
     FixtureStatus,
     League,
@@ -38,11 +38,9 @@ from app.modules.sports.schemas import (
     VenueFilters,
 )
 
-EntityT = TypeVar("EntityT")
-
 
 @dataclass(frozen=True, slots=True)
-class PageResult(Generic[EntityT]):
+class PageResult[EntityT]:
     """Database-page result independent of an HTTP response schema."""
 
     items: list[EntityT]
@@ -57,7 +55,7 @@ class ReadRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def _page(
+    async def _page[EntityT](
         self, statement: Select[tuple[EntityT]], pagination: PaginationParams
     ) -> PageResult[EntityT]:
         count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
@@ -211,8 +209,13 @@ class TimezoneRepository(ReadRepository):
         if filters.q:
             statement = statement.where(Timezone.iana_name.ilike(f"%{filters.q}%"))
         if filters.country_id:
-            statement = statement.join(Country, Country.primary_timezone_id == Timezone.id).where(
-                Country.id == filters.country_id, Country.deleted_at.is_(None)
+            statement = (
+                statement.join(CountryTimezone, CountryTimezone.timezone_id == Timezone.id)
+                .join(Country, Country.id == CountryTimezone.country_id)
+                .where(
+                    Country.id == filters.country_id,
+                    Country.deleted_at.is_(None),
+                )
             )
         if filters.is_active is not None:
             statement = statement.where(Timezone.is_active == filters.is_active)

@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Generic, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.sports.enums import CompetitionType, SeasonStatus, TeamType
 
@@ -35,7 +34,6 @@ class CountryRead(SoftDeletedReadSchema):
     name: str
     iso_code: str
     iso3_code: str | None
-    primary_timezone_id: UUID | None
 
 
 class LeagueRead(SoftDeletedReadSchema):
@@ -114,10 +112,7 @@ class OfficialRead(SoftDeletedReadSchema):
     country_id: UUID | None
 
 
-T = TypeVar("T")
-
-
-class Page(BaseModel, Generic[T]):
+class Page[T](BaseModel):
     """Stable offset-pagination envelope shared by all list endpoints."""
 
     items: list[T]
@@ -186,6 +181,14 @@ class FixtureFilters(BaseModel):
     fixture_status_code: str | None = Field(default=None, min_length=1, max_length=32)
     starts_after: datetime | None = None
     starts_before: datetime | None = None
+
+    @field_validator("starts_after", "starts_before")
+    @classmethod
+    def require_timezone_aware_bound(cls, value: datetime | None) -> datetime | None:
+        """Avoid database-session timezone ambiguity in fixture time filtering."""
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise ValueError("fixture time bounds must include a timezone offset")
+        return value
 
     @model_validator(mode="after")
     def validate_time_window(self) -> FixtureFilters:

@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy import (
     Enum as SqlEnum,
@@ -60,13 +61,11 @@ class Timezone(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("char_length(iana_name) >= 3", name="ck_sports_timezones_iana_name_length"),
     )
 
-    iana_name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    iana_name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
 
-    countries: Mapped[list[Country]] = relationship(
-        back_populates="primary_timezone", foreign_keys="Country.primary_timezone_id"
-    )
+    country_links: Mapped[list[CountryTimezone]] = relationship(back_populates="timezone")
     venues: Mapped[list[Venue]] = relationship(back_populates="timezone")
     competitions: Mapped[list[Competition]] = relationship(back_populates="default_timezone")
     fixtures: Mapped[list[Fixture]] = relationship(back_populates="timezone")
@@ -79,29 +78,60 @@ class Country(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     __table_args__ = (
         CheckConstraint("char_length(iso_code) = 2", name="ck_sports_countries_iso_code_length"),
         CheckConstraint("iso_code = upper(iso_code)", name="ck_sports_countries_iso_code_upper"),
+        CheckConstraint(
+            "iso3_code IS NULL OR char_length(iso3_code) = 3",
+            name="ck_sports_countries_iso3_code_length",
+        ),
         CheckConstraint("iso3_code = upper(iso3_code)", name="ck_sports_countries_iso3_code_upper"),
+        UniqueConstraint("name", name="uq_sports_countries_name"),
+        UniqueConstraint("iso_code", name="uq_sports_countries_iso_code"),
         UniqueConstraint("iso3_code", name="uq_sports_countries_iso3_code"),
         Index("ix_sports_countries_deleted_at", "deleted_at"),
     )
 
-    name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
-    iso_code: Mapped[str] = mapped_column(String(2), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    iso_code: Mapped[str] = mapped_column(String(2), nullable=False)
     iso3_code: Mapped[str | None] = mapped_column(String(3), nullable=True)
-    primary_timezone_id: Mapped[UUID | None] = mapped_column(
-        PostgreSQLUUID(as_uuid=True),
-        ForeignKey("sports_timezones.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-
-    primary_timezone: Mapped[Timezone | None] = relationship(
-        back_populates="countries", foreign_keys=[primary_timezone_id]
-    )
+    timezone_links: Mapped[list[CountryTimezone]] = relationship(back_populates="country")
     leagues: Mapped[list[League]] = relationship(back_populates="country")
     teams: Mapped[list[Team]] = relationship(back_populates="country")
     venues: Mapped[list[Venue]] = relationship(back_populates="country")
     competitions: Mapped[list[Competition]] = relationship(back_populates="country")
     officials: Mapped[list[Official]] = relationship(back_populates="country")
+
+
+class CountryTimezone(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Canonical country-to-IANA timezone mapping with an optional primary zone."""
+
+    __tablename__ = "sports_country_timezones"
+    __table_args__ = (
+        UniqueConstraint(
+            "country_id", "timezone_id", name="uq_sports_country_timezones_country_timezone"
+        ),
+        Index(
+            "uq_sports_country_timezones_one_primary",
+            "country_id",
+            unique=True,
+            postgresql_where=text("is_primary"),
+        ),
+    )
+
+    country_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("sports_countries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    timezone_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("sports_timezones.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    country: Mapped[Country] = relationship(back_populates="timezone_links")
+    timezone: Mapped[Timezone] = relationship(back_populates="country_links")
 
 
 class League(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
@@ -283,7 +313,7 @@ class FixtureStatus(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("sort_order >= 0", name="ck_sports_fixture_statuses_sort_order"),
     )
 
-    code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
+    code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_terminal: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
@@ -308,6 +338,10 @@ class Fixture(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="uq_sports_fixtures_season_teams_start",
         ),
         CheckConstraint("home_team_id <> away_team_id", name="ck_sports_fixtures_distinct_teams"),
+        CheckConstraint(
+            "scheduled_end_at IS NULL OR scheduled_end_at >= scheduled_start_at",
+            name="ck_sports_fixtures_schedule_range",
+        ),
         Index("ix_sports_fixtures_scheduled_start_at", "scheduled_start_at"),
         Index("ix_sports_fixtures_status_start", "fixture_status_id", "scheduled_start_at"),
     )

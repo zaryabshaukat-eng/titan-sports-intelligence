@@ -43,7 +43,7 @@ For a local process, start PostgreSQL and Redis through Docker Compose first, th
 
 ## Database migrations
 
-Alembic is configured, but this foundation deliberately includes no domain schema migrations. Future modules own their migrations.
+Alembic includes the initial canonical Sports Domain migration. Future bounded modules must add their own reviewed migrations rather than modifying this historical revision.
 
 ```powershell
 alembic upgrade head

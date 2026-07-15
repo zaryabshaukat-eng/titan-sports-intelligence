@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, TypeVar
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -52,10 +52,8 @@ router = APIRouter(prefix="/sports", tags=["Sports Domain"])
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 PaginationDependency = Annotated[PaginationParams, Depends()]
 
-SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
-
-def _page(result: PageResult[object], schema: type[SchemaT]) -> Page[SchemaT]:
+def _page[SchemaT: BaseModel](result: PageResult[object], schema: type[SchemaT]) -> Page[SchemaT]:
     """Convert a repository page into its documented public response contract."""
     return Page[SchemaT](
         items=[schema.model_validate(item) for item in result.items],
@@ -65,7 +63,7 @@ def _page(result: PageResult[object], schema: type[SchemaT]) -> Page[SchemaT]:
     )
 
 
-def _require(entity: SchemaT | None, resource_name: str, resource_id: UUID) -> SchemaT:
+def _require[SchemaT](entity: SchemaT | None, resource_name: str, resource_id: UUID) -> SchemaT:
     """Return an entity or raise the standardized not-found API response."""
     if entity is None:
         raise HTTPException(

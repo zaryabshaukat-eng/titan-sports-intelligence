@@ -1,3 +1,3 @@
 # Alembic revisions
 
-Phase 2.2 deliberately defines no domain tables, so it includes no initial migration. Each future bounded module must add reviewed migrations here when it introduces persistent schema.
+`20260715_0001_canonical_sports_domain.py` is the initial canonical Sports Domain migration. Each future bounded module must add a new reviewed migration here rather than changing historical revisions.
