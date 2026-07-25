@@ -56,7 +56,7 @@ class StatisticProvider(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class StatisticCategory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "statistics_categories"
-    code: Mapped[str] = mapped_column(String(96), unique=True, nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(96), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     value_schema: Mapped[dict[str, object]] = mapped_column(
@@ -200,6 +200,12 @@ class PlayerStatistic(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class StatisticIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "statistics_ingestion_runs"
+    __table_args__ = (
+        CheckConstraint("received_count >= 0", name="ck_statistics_runs_received_count"),
+        CheckConstraint("snapshots_created_count >= 0", name="ck_statistics_runs_created_count"),
+        CheckConstraint("failed_count >= 0", name="ck_statistics_runs_failed_count"),
+        Index("ix_statistics_runs_provider_started", "provider_id", "started_at"),
+    )
     provider_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_providers.id", ondelete="RESTRICT"),
@@ -225,6 +231,8 @@ class RawStatisticPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("provider_id", "idempotency_key", name="uq_statistics_raw_provider_key"),
         Index("ix_statistics_raw_checksum", "checksum"),
+        Index("ix_statistics_raw_ingestion_run", "ingestion_run_id"),
+        Index("ix_statistics_raw_fixture", "canonical_fixture_id"),
     )
     ingestion_run_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -292,6 +300,14 @@ class StatisticSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="uq_statistics_snapshot_observation",
         ),
         Index("ix_statistics_snapshots_fixture_observed", "fixture_id", "observed_at"),
+        Index(
+            "ix_statistics_snapshots_series_latest",
+            "series_id",
+            "observed_at",
+            "created_at",
+        ),
+        Index("ix_statistics_snapshots_ingestion_run", "ingestion_run_id"),
+        Index("ix_statistics_snapshots_raw_payload", "raw_payload_id"),
     )
     ingestion_run_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -338,6 +354,11 @@ class StatisticSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class StatisticAudit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "statistics_audits"
+    __table_args__ = (
+        Index("ix_statistics_audits_ingestion_run", "ingestion_run_id"),
+        Index("ix_statistics_audits_raw_payload", "raw_payload_id"),
+        Index("ix_statistics_audits_provider_created", "provider_id", "created_at"),
+    )
     ingestion_run_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_ingestion_runs.id", ondelete="RESTRICT"),
@@ -365,6 +386,9 @@ class StatisticsOutboxEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "statistics_outbox_events"
     __table_args__ = (
         UniqueConstraint("event_type", "event_key", name="uq_statistics_outbox_event"),
+        Index("ix_statistics_outbox_ingestion_run", "ingestion_run_id"),
+        Index("ix_statistics_outbox_raw_payload", "raw_payload_id"),
+        Index("ix_statistics_outbox_unpublished", "published_at", "created_at"),
     )
     ingestion_run_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -382,3 +406,15 @@ class StatisticsOutboxEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     event_key: Mapped[str] = mapped_column(String(192), nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    next_attempt_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dead_lettered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

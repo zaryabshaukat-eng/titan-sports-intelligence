@@ -16,12 +16,15 @@ from app.core.errors import install_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, RequestLoggingMiddleware
 from app.core.observability import create_metrics
-from app.core.security import SecurityHeadersMiddleware
+from app.core.security import AuthenticationMiddleware, SecurityHeadersMiddleware
+from app.modules.identity.providers import build_identity_provider
 from app.modules.ingestion.providers.registry import build_default_registry
 from app.modules.market_data.providers.registry import (
     build_default_registry as build_odds_provider_registry,
 )
-from app.modules.statistics.providers.registry import build_default_registry as build_statistics_registry
+from app.modules.statistics.providers.registry import (
+    build_default_registry as build_statistics_registry,
+)
 from app.shared.persistence.database import DatabaseSessionManager
 from app.shared.redis import RedisClient
 
@@ -32,7 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
     app.state.database = DatabaseSessionManager(settings.database_url)
     app.state.redis = RedisClient(settings.redis_url)
-    app.state.token_verifier = None
+    app.state.identity_provider = build_identity_provider(settings)
     app.state.fixture_provider_registry = build_default_registry()
     app.state.odds_provider_registry = build_odds_provider_registry()
     app.state.statistics_provider_registry = build_statistics_registry()
@@ -106,6 +109,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if resolved_settings.trusted_hosts:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=resolved_settings.trusted_hosts)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(AuthenticationMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(RequestIdMiddleware)
 

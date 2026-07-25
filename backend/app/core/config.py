@@ -7,7 +7,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Any
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import BaseModel, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +21,14 @@ class AppEnvironment(StrEnum):
 
 
 _DEVELOPMENT_SECRET = "local-development-secret-change-before-production"
+
+
+class DevelopmentIdentityCredential(BaseModel):
+    """One development-only bearer credential and its normalized identity claims."""
+
+    subject: str
+    organization_id: str | None = "development"
+    roles: list[str]
 
 
 class Settings(BaseSettings):
@@ -49,6 +57,21 @@ class Settings(BaseSettings):
     cors_allow_credentials: bool = True
     trusted_hosts: list[str] = []
 
+    outbox_poll_interval_seconds: float = 1.0
+    outbox_lease_seconds: int = 30
+    outbox_batch_size: int = 100
+    outbox_max_attempts: int = 8
+    outbox_retry_initial_seconds: float = 1.0
+    outbox_retry_max_seconds: float = 300.0
+    readiness_timeout_seconds: float = 2.0
+
+    identity_provider: str = "development"
+    development_identity_credentials: dict[str, DevelopmentIdentityCredential] = {
+        "titan-development-admin": DevelopmentIdentityCredential(
+            subject="development-admin", roles=["titan_admin"]
+        )
+    }
+
     secret_key: SecretStr = SecretStr(_DEVELOPMENT_SECRET)
 
     @field_validator("cors_origins", "trusted_hosts", mode="before")
@@ -64,6 +87,14 @@ class Settings(BaseSettings):
         if normalized.startswith("["):
             return json.loads(normalized)
         return [item.strip() for item in normalized.split(",") if item.strip()]
+
+    @field_validator("development_identity_credentials", mode="before")
+    @classmethod
+    def parse_development_credentials(cls, value: Any) -> Any:
+        """Accept JSON credentials from environment without placing them in source control."""
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
 
     @field_validator("database_url")
     @classmethod
@@ -95,6 +126,8 @@ class Settings(BaseSettings):
             raise ValueError("production requires explicit CORS origins")
         if any("localhost" in origin for origin in self.cors_origins):
             raise ValueError("localhost is not a permitted production CORS origin")
+        if self.identity_provider == "development":
+            raise ValueError("production cannot use the development identity provider")
         return self
 
     @property

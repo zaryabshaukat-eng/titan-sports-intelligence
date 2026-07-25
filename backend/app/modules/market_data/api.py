@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import Principal, require_authenticated_principal
+from app.core.security import Principal, require_permissions
+from app.modules.identity.models import Permission
 from app.modules.market_data.exceptions import UnknownOddsProviderError
 from app.modules.market_data.providers.registry import OddsProviderRegistry
 from app.modules.market_data.read_repositories import (
@@ -44,7 +45,10 @@ from app.shared.persistence.database import get_db_session
 router = APIRouter(prefix="/market-data", tags=["Market Data"])
 
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
-PrincipalDependency = Annotated[Principal, Depends(require_authenticated_principal)]
+PrincipalDependency = Annotated[Principal, Depends(require_permissions(Permission.DATA_READ))]
+WritePrincipalDependency = Annotated[
+    Principal, Depends(require_permissions(Permission.MARKET_DATA_INGEST))
+]
 PaginationDependency = Annotated[PaginationParams, Depends()]
 
 
@@ -86,7 +90,7 @@ async def ingest_odds_batch(
     request_body: OddsIngestionRequest,
     request: Request,
     session: SessionDependency,
-    principal: PrincipalDependency,
+    principal: WritePrincipalDependency,
 ) -> OddsIngestionBatchResult:
     """Run one registered odds-provider adapter inside the request-scoped transaction."""
     _ = principal
@@ -101,9 +105,14 @@ async def ingest_odds_batch(
                 "message": f"Odds provider '{provider_name}' is not registered.",
             },
         ) from exc
-    return await OddsIngestionService(session=session, provider_adapter=adapter).ingest(
+    result = await OddsIngestionService(session=session, provider_adapter=adapter).ingest(
         request_body.payloads
     )
+    metrics = request.app.state.metrics
+    if metrics is not None:
+        failures = sum(item.outcome.value == "validation_failed" for item in result.items)
+        metrics.observe_ingestion("market_data", provider_name, len(result.items), failures)
+    return result
 
 
 @router.get("/bookmakers", response_model=Page[BookmakerRead], summary="List bookmakers")

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.ingestion.models import FixtureProviderIdentity
 from app.modules.sports.models import Team
 from app.modules.statistics.enums import StatisticMappingEntityType, StatisticScope
+from app.modules.statistics.exceptions import StatisticsResolutionError
 from app.modules.statistics.models import (
     FixtureStatistic,
     PlayerStatistic,
@@ -117,7 +118,7 @@ class StatisticsRepository:
                 select(Team).where(Team.name == name, Team.deleted_at.is_(None))
             )
         if item is None:
-            raise ValueError(f"canonical team '{name}' is not available")
+            raise StatisticsResolutionError(f"Canonical team '{name}' is not available.")
         if mapping is None:
             self.session.add(
                 StatisticProviderMapping(
@@ -193,7 +194,7 @@ class StatisticsRepository:
             return row.id, refs
         if statistic.scope is StatisticScope.TEAM:
             if statistic.team is None:
-                raise ValueError("team statistic requires team")
+                raise StatisticsResolutionError("A team statistic requires a team reference.")
             team = await self.team(provider, statistic.team.id, statistic.team.name)
             row = await self.session.scalar(
                 select(TeamStatistic).where(
@@ -215,7 +216,7 @@ class StatisticsRepository:
             refs["team_statistic_id"] = row.id
             return row.id, refs
         if statistic.player is None:
-            raise ValueError("player statistic requires player")
+            raise StatisticsResolutionError("A player statistic requires a player reference.")
         player = await self.player(
             provider, statistic.player.id, statistic.player.name, statistic.player.birth_date
         )

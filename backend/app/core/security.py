@@ -1,73 +1,128 @@
-"""Authentication extension points and HTTP security middleware."""
+"""Authentication middleware, provider-neutral principal resolution, and authorization guards."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Annotated, Protocol
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
-
-@dataclass(frozen=True, slots=True)
-class Principal:
-    """Verified caller identity exposed to protected future endpoints."""
-
-    subject: str
-    organization_id: str | None
-    roles: frozenset[str]
-
-
-class TokenVerifier(Protocol):
-    """Contract implemented by a future identity-provider adapter."""
-
-    async def verify(self, token: str) -> Principal:
-        """Validate a bearer token and return a verified principal."""
-
+from app.modules.identity.models import Permission, Principal
+from app.modules.identity.providers import IdentityAuthenticationError, IdentityProvider
 
 bearer_scheme = HTTPBearer(auto_error=False)
 BearerCredentials = Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)]
+
+
+def _authentication_error(code: str, message: str, status_code: int) -> HTTPException:
+    return HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": message},
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+class AuthenticationMiddleware(BaseHTTPMiddleware):
+    """Authenticate supplied bearer credentials once per request and store the principal."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        header = request.headers.get("Authorization")
+        if header is None:
+            return await call_next(request)
+        scheme, _, credential = header.partition(" ")
+        if scheme.lower() != "bearer" or not credential:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "detail": {
+                        "code": "authentication_invalid",
+                        "message": "Invalid bearer credential.",
+                    }
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        provider: IdentityProvider | None = getattr(request.app.state, "identity_provider", None)
+        if provider is None:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "detail": {
+                        "code": "authentication_not_configured",
+                        "message": "Authentication is unavailable.",
+                    }
+                },
+            )
+        try:
+            request.state.principal = await provider.authenticate(credential)
+        except IdentityAuthenticationError:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "detail": {
+                        "code": "authentication_invalid",
+                        "message": "Invalid bearer credential.",
+                    }
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return await call_next(request)
 
 
 async def require_authenticated_principal(
     request: Request,
     credentials: BearerCredentials,
 ) -> Principal:
-    """Fail closed until a real identity provider is configured.
-
-    This is intentionally an extension point, not login or token-validation logic.
-    Future protected routes depend on this function instead of inspecting raw headers.
-    """
+    """Require the middleware-verified principal while preserving OpenAPI bearer security."""
     if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "code": "authentication_required",
-                "message": "Bearer authentication is required.",
-            },
-            headers={"WWW-Authenticate": "Bearer"},
+        raise _authentication_error(
+            "authentication_required",
+            "Bearer authentication is required.",
+            status.HTTP_401_UNAUTHORIZED,
         )
-
-    verifier: TokenVerifier | None = getattr(request.app.state, "token_verifier", None)
-    if verifier is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "code": "authentication_not_configured",
-                "message": "Authentication is unavailable.",
-            },
+    principal: Principal | None = getattr(request.state, "principal", None)
+    if principal is not None:
+        return principal
+    provider: IdentityProvider | None = getattr(request.app.state, "identity_provider", None)
+    if provider is None:
+        raise _authentication_error(
+            "authentication_not_configured",
+            "Authentication is unavailable.",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    try:
+        return await provider.authenticate(credentials.credentials)
+    except IdentityAuthenticationError as exc:
+        raise _authentication_error(
+            "authentication_invalid", "Invalid bearer credential.", status.HTTP_401_UNAUTHORIZED
+        ) from exc
 
-    return await verifier.verify(credentials.credentials)
+
+def require_permissions(*permissions: Permission):
+    """Build a dependency requiring all named permissions for an internal operation."""
+
+    async def authorize(
+        principal: Annotated[Principal, Depends(require_authenticated_principal)],
+    ) -> Principal:
+        if not principal.permits(*permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "authorization_denied",
+                    "message": "The authenticated principal lacks the required permission.",
+                    "required_permissions": [permission.value for permission in permissions],
+                },
+            )
+        return principal
+
+    return authorize
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Apply baseline browser security headers to every HTTP response."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Add headers after the downstream application has prepared its response."""
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")

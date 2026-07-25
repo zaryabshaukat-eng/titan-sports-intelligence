@@ -1,6 +1,5 @@
 """Orchestrates auditable, retry-safe append-only statistics ingestion."""
 
-# ruff: noqa: E501, E701, E702
 from __future__ import annotations
 
 import hashlib
@@ -8,7 +7,9 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.statistics.enums import (
@@ -16,6 +17,12 @@ from app.modules.statistics.enums import (
     StatisticsAuditOutcome,
     StatisticsEventType,
     StatisticsRunStatus,
+)
+from app.modules.statistics.exceptions import (
+    StatisticsError,
+    StatisticsPayloadValidationError,
+    StatisticsPersistenceError,
+    StatisticsResolutionError,
 )
 from app.modules.statistics.models import (
     RawStatisticPayload,
@@ -60,7 +67,11 @@ class StatisticsIngestionService:
         )
 
     async def _one(
-        self, provider_id: Any, run: StatisticIngestionRun, index: int, payload: dict[str, object]
+        self,
+        provider_id: Any,
+        run: StatisticIngestionRun,
+        index: int,
+        payload: dict[str, object],
     ) -> IngestionItemRead:
         checksum = hashlib.sha256(
             json.dumps(payload, sort_keys=True, default=str, separators=(",", ":")).encode()
@@ -89,45 +100,41 @@ class StatisticsIngestionService:
         self.session.add(raw)
         await self.session.flush()
         try:
-            normalized = self.adapter.normalize(payload)
+            normalized = self._normalize(payload)
             fixture = await self.repository.fixture(
                 normalized.fixture.provider, normalized.fixture.id
             )
             if fixture is None:
-                raise ValueError("fixture must already exist through Fixture Ingestion")
-            raw.canonical_fixture_id, raw.validation_status = (
-                fixture,
-                RawStatisticPayloadStatus.VALID,
+                raise StatisticsResolutionError(
+                    "Fixture must already exist through Fixture Ingestion."
+                )
+            provider = await self.repository.provider(self.adapter.provider_name)
+            async with self.session.begin_nested():
+                created = await self._append_snapshots(
+                    provider_id=provider_id,
+                    run=run,
+                    raw=raw,
+                    fixture_id=fixture,
+                    observed_at=normalized.observed_at,
+                    checksum=checksum,
+                    observations=normalized.statistics,
+                    provider=provider,
+                )
+        except StatisticsError as exc:
+            return self._record_validation_failure(run, index, raw, checksum, self._errors(exc))
+        except IntegrityError:
+            return self._record_validation_failure(
+                run,
+                index,
+                raw,
+                checksum,
+                self._errors(
+                    StatisticsPersistenceError("A concurrent statistics write conflicted.")
+                ),
             )
-            created = 0
-            for observation in normalized.statistics:
-                series_id, refs = await self.repository.series(
-                    fixture, await self.repository.provider(self.adapter.provider_name), observation
-                )
-                exists = await self.session.scalar(
-                    select(StatisticSnapshot.id).where(
-                        StatisticSnapshot.provider_id == provider_id,
-                        StatisticSnapshot.series_id == series_id,
-                        StatisticSnapshot.observed_at == normalized.observed_at,
-                        StatisticSnapshot.checksum == checksum,
-                    )
-                )
-                if exists is None:
-                    self.session.add(
-                        StatisticSnapshot(
-                            ingestion_run_id=run.id,
-                            raw_payload_id=raw.id,
-                            provider_id=provider_id,
-                            fixture_id=fixture,
-                            scope=observation.scope,
-                            series_id=series_id,
-                            values=observation.values,
-                            observed_at=normalized.observed_at,
-                            checksum=checksum,
-                            **refs,
-                        )
-                    )
-                    created += 1
+        else:
+            raw.canonical_fixture_id = fixture
+            raw.validation_status = RawStatisticPayloadStatus.VALID
             raw.validation_status, raw.processed_at = (
                 RawStatisticPayloadStatus.APPLIED,
                 datetime.now(UTC),
@@ -161,35 +168,99 @@ class StatisticsIngestionService:
                 )
             )
             return IngestionItemRead(source_index=index, outcome=outcome, snapshots_created=created)
-        except Exception as exc:
-            raw.validation_status, raw.validation_errors, raw.processed_at = (
-                RawStatisticPayloadStatus.INVALID,
-                [{"message": str(exc)}],
-                datetime.now(UTC),
-            )
-            run.failed_count += 1
-            self.session.add(
-                StatisticAudit(
-                    ingestion_run_id=run.id,
-                    raw_payload_id=raw.id,
-                    provider_id=provider_id,
-                    outcome=StatisticsAuditOutcome.VALIDATION_FAILED,
-                    checksum=checksum,
-                    changes={},
-                    error_details=raw.validation_errors,
+
+    def _normalize(self, payload: dict[str, object]):
+        """Convert source validation errors into explicit audit-safe domain errors."""
+        try:
+            return self.adapter.normalize(payload)
+        except ValidationError as exc:
+            raise StatisticsPayloadValidationError(exc.errors()) from exc
+
+    async def _append_snapshots(
+        self,
+        *,
+        provider_id: Any,
+        run: StatisticIngestionRun,
+        raw: RawStatisticPayload,
+        fixture_id: Any,
+        observed_at: datetime,
+        checksum: str,
+        observations: list[Any],
+        provider: Any,
+    ) -> int:
+        """Append an all-or-nothing payload's canonical observations inside a savepoint."""
+        created = 0
+        for observation in observations:
+            series_id, refs = await self.repository.series(fixture_id, provider, observation)
+            exists = await self.session.scalar(
+                select(StatisticSnapshot.id).where(
+                    StatisticSnapshot.provider_id == provider_id,
+                    StatisticSnapshot.series_id == series_id,
+                    StatisticSnapshot.observed_at == observed_at,
+                    StatisticSnapshot.checksum == checksum,
                 )
             )
-            self.session.add(
-                StatisticsOutboxEvent(
-                    ingestion_run_id=run.id,
-                    raw_payload_id=raw.id,
-                    event_type=StatisticsEventType.VALIDATION_FAILED,
-                    event_key=f"{run.id}:{raw.id}",
-                    payload={"errors": raw.validation_errors},
+            if exists is None:
+                self.session.add(
+                    StatisticSnapshot(
+                        ingestion_run_id=run.id,
+                        raw_payload_id=raw.id,
+                        provider_id=provider_id,
+                        fixture_id=fixture_id,
+                        scope=observation.scope,
+                        series_id=series_id,
+                        values=observation.values,
+                        observed_at=observed_at,
+                        checksum=checksum,
+                        **refs,
+                    )
                 )
-            )
-            return IngestionItemRead(
-                source_index=index,
+                created += 1
+        await self.session.flush()
+        return created
+
+    @staticmethod
+    def _errors(exc: StatisticsError) -> list[dict[str, Any]]:
+        """Return consistent structured error evidence without exposing tracebacks."""
+        if isinstance(exc, StatisticsPayloadValidationError):
+            return exc.errors
+        return [{"code": exc.__class__.__name__, "message": str(exc)}]
+
+    def _record_validation_failure(
+        self,
+        run: StatisticIngestionRun,
+        index: int,
+        raw: RawStatisticPayload,
+        checksum: str,
+        errors: list[dict[str, Any]],
+    ) -> IngestionItemRead:
+        """Persist only raw payload and failure evidence after savepoint rollback."""
+        raw.validation_status = RawStatisticPayloadStatus.INVALID
+        raw.validation_errors = errors
+        raw.processed_at = datetime.now(UTC)
+        run.failed_count += 1
+        self.session.add(
+            StatisticAudit(
+                ingestion_run_id=run.id,
+                raw_payload_id=raw.id,
+                provider_id=raw.provider_id,
                 outcome=StatisticsAuditOutcome.VALIDATION_FAILED,
-                validation_errors=raw.validation_errors,
+                checksum=checksum,
+                changes={"source_index": index},
+                error_details=errors,
             )
+        )
+        self.session.add(
+            StatisticsOutboxEvent(
+                ingestion_run_id=run.id,
+                raw_payload_id=raw.id,
+                event_type=StatisticsEventType.VALIDATION_FAILED,
+                event_key=f"{run.id}:{raw.id}",
+                payload={"source_index": index, "errors": errors},
+            )
+        )
+        return IngestionItemRead(
+            source_index=index,
+            outcome=StatisticsAuditOutcome.VALIDATION_FAILED,
+            validation_errors=errors,
+        )

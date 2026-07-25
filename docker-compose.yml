@@ -26,6 +26,21 @@ services:
       retries: 3
       start_period: 10s
 
+  worker:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.workers.main"]
+    environment:
+      TITAN_APP_ENV: ${TITAN_APP_ENV:-development}
+      TITAN_LOG_LEVEL: ${TITAN_LOG_LEVEL:-INFO}
+      TITAN_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD:-titan}@db:5432/${POSTGRES_DB:-titan}
+      TITAN_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   db:
     image: postgres:16-alpine
     environment:

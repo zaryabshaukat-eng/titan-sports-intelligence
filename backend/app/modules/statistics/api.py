@@ -1,6 +1,5 @@
 """Protected internal ingestion and read-only Statistics API."""
 
-# ruff: noqa: E501, E701, E702
 from typing import Annotated
 from uuid import UUID
 
@@ -8,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import Principal, require_authenticated_principal
+from app.core.security import Principal, require_permissions
+from app.modules.identity.models import Permission
 from app.modules.statistics.models import StatisticCategory, StatisticSnapshot
 from app.modules.statistics.schemas import (
     CategoryRead,
@@ -23,7 +23,8 @@ from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/statistics", tags=["Statistics"])
 Session = Annotated[AsyncSession, Depends(get_db_session)]
-PrincipalDep = Annotated[Principal, Depends(require_authenticated_principal)]
+PrincipalDep = Annotated[Principal, Depends(require_permissions(Permission.DATA_READ))]
+WritePrincipalDep = Annotated[Principal, Depends(require_permissions(Permission.STATISTICS_INGEST))]
 PageDep = Annotated[Pagination, Depends()]
 
 
@@ -45,14 +46,19 @@ async def ingest(
     body: StatisticsIngestionRequest,
     request: Request,
     session: Session,
-    principal: PrincipalDep,
+    principal: WritePrincipalDep,
 ) -> StatisticsIngestionResult:
     _ = principal
     try:
         adapter = (request.app.state.statistics_provider_registry).get(provider_name)
     except KeyError as exc:
         raise HTTPException(404, detail="statistics_provider_not_found") from exc
-    return await StatisticsIngestionService(session, adapter).ingest(body.payloads)
+    result = await StatisticsIngestionService(session, adapter).ingest(body.payloads)
+    metrics = request.app.state.metrics
+    if metrics is not None:
+        failures = sum(item.outcome == "validation_failed" for item in result.items)
+        metrics.observe_ingestion("statistics", provider_name, len(result.items), failures)
+    return result
 
 
 @router.get("/categories", response_model=Page[CategoryRead])
@@ -73,20 +79,33 @@ async def categories(p: PageDep, session: Session, principal: PrincipalDep) -> P
 
 
 async def snapshots(
-    fixture_id: UUID | None, scope: str | None, p: Pagination, session: AsyncSession
+    fixture_id: UUID | None,
+    scope: str | None,
+    p: Pagination,
+    session: AsyncSession,
+    *,
+    latest_only: bool = False,
 ) -> Page[object]:
     q = select(StatisticSnapshot)
-    count = select(func.count()).select_from(StatisticSnapshot)
+    if latest_only:
+        ranked = select(
+            StatisticSnapshot.id.label("snapshot_id"),
+            func.row_number()
+            .over(
+                partition_by=StatisticSnapshot.series_id,
+                order_by=(
+                    StatisticSnapshot.observed_at.desc(),
+                    StatisticSnapshot.created_at.desc(),
+                ),
+            )
+            .label("rank"),
+        ).subquery()
+        q = q.join(ranked, ranked.c.snapshot_id == StatisticSnapshot.id).where(ranked.c.rank == 1)
     if fixture_id:
-        q, count = (
-            q.where(StatisticSnapshot.fixture_id == fixture_id),
-            count.where(StatisticSnapshot.fixture_id == fixture_id),
-        )
+        q = q.where(StatisticSnapshot.fixture_id == fixture_id)
     if scope:
-        q, count = (
-            q.where(StatisticSnapshot.scope == scope),
-            count.where(StatisticSnapshot.scope == scope),
-        )
+        q = q.where(StatisticSnapshot.scope == scope)
+    count = select(func.count()).select_from(q.order_by(None).subquery())
     total = await session.scalar(count) or 0
     rows = list(
         (
@@ -139,7 +158,7 @@ async def latest(
     principal: PrincipalDep = None,
 ) -> Page[object]:
     _ = principal
-    return await snapshots(fixture_id, None, p, session)
+    return await snapshots(fixture_id, None, p, session, latest_only=True)
 
 
 @router.get("/history", response_model=Page[SnapshotRead])

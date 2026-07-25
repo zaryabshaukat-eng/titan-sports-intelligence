@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 request_id_context: ContextVar[str | None] = ContextVar("request_id", default=None)
+trace_id_context: ContextVar[str | None] = ContextVar("trace_id", default=None)
 
 
 class JsonFormatter(logging.Formatter):
@@ -27,6 +28,9 @@ class JsonFormatter(logging.Formatter):
         request_id = request_id_context.get()
         if request_id:
             event["request_id"] = request_id
+        trace_id = trace_id_context.get()
+        if trace_id:
+            event["trace_id"] = trace_id
 
         extra_fields = getattr(record, "extra_fields", None)
         if isinstance(extra_fields, dict):

@@ -9,7 +9,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
-from app.core.logging import get_logger, request_id_context
+from app.core.logging import get_logger, request_id_context, trace_id_context
 
 logger = get_logger(__name__)
 
@@ -30,13 +30,32 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Set the correlation context for the complete request lifecycle."""
         request_id = _request_id_from_header(request.headers.get("X-Request-ID"))
-        token = request_id_context.set(request_id)
+        trace_id = _trace_id_from_header(request.headers.get("traceparent"))
+        request_token = request_id_context.set(request_id)
+        trace_token = trace_id_context.set(trace_id)
         try:
             response = await call_next(request)
             response.headers["X-Request-ID"] = request_id
+            response.headers["X-Trace-ID"] = trace_id
+            response.headers["traceparent"] = f"00-{trace_id}-{uuid4().hex[:16]}-01"
             return response
         finally:
-            request_id_context.reset(token)
+            trace_id_context.reset(trace_token)
+            request_id_context.reset(request_token)
+
+
+def _trace_id_from_header(value: str | None) -> str:
+    """Use a valid W3C trace ID when supplied, otherwise begin a new local trace."""
+    if value:
+        parts = value.split("-")
+        if (
+            len(parts) == 4
+            and len(parts[1]) == 32
+            and len(parts[2]) == 16
+            and all(character in "0123456789abcdefABCDEF" for character in parts[1] + parts[2])
+        ):
+            return parts[1].lower()
+    return uuid4().hex
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

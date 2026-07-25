@@ -7,7 +7,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import Principal, require_authenticated_principal
+from app.core.security import Principal, require_permissions
+from app.modules.identity.models import Permission
 from app.modules.ingestion.exceptions import UnknownProviderError
 from app.modules.ingestion.providers.registry import FixtureProviderRegistry
 from app.modules.ingestion.schemas import FixtureIngestionBatchResult, FixtureIngestionRequest
@@ -17,7 +18,7 @@ from app.shared.persistence.database import get_db_session
 router = APIRouter(prefix="/ingestion", tags=["Fixture Ingestion"])
 
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
-PrincipalDependency = Annotated[Principal, Depends(require_authenticated_principal)]
+PrincipalDependency = Annotated[Principal, Depends(require_permissions(Permission.FIXTURE_INGEST))]
 
 
 @router.post(
@@ -51,6 +52,15 @@ async def ingest_fixture_batch(
             },
         ) from exc
 
-    return await FixtureIngestionService(session=session, provider_adapter=adapter).ingest(
+    result = await FixtureIngestionService(session=session, provider_adapter=adapter).ingest(
         request_body.payloads
     )
+    metrics = request.app.state.metrics
+    if metrics is not None:
+        metrics.observe_ingestion(
+            "fixture_ingestion",
+            provider_name,
+            result.received_count,
+            result.failed_count,
+        )
+    return result
