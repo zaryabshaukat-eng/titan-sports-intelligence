@@ -10,7 +10,6 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Index,
     Integer,
@@ -19,6 +18,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+)
+from sqlalchemy import (
+    Enum as SqlEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
@@ -141,7 +143,9 @@ class Market(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     period_code: Mapped[str] = mapped_column(String(32), nullable=False, server_default="full_time")
     line_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     line_key: Mapped[str] = mapped_column(String(32), nullable=False, server_default="none")
-    attributes: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    attributes: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
     status_observed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
     )
@@ -172,7 +176,9 @@ class Selection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    attributes: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    attributes: Mapped[dict[str, object]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
 
     market: Mapped[Market] = relationship(back_populates="selections")
     odds_snapshots: Mapped[list[OddsSnapshot]] = relationship(back_populates="selection")
@@ -207,8 +213,12 @@ class OddsIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     received_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    snapshots_created_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    snapshots_ignored_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    snapshots_created_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
+    snapshots_ignored_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
     movements_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     failed_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     failure_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -216,7 +226,9 @@ class OddsIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     raw_payloads: Mapped[list[RawOddsPayload]] = relationship(back_populates="ingestion_run")
     audit_entries: Mapped[list[OddsAudit]] = relationship(back_populates="ingestion_run")
     snapshots: Mapped[list[OddsSnapshot]] = relationship(back_populates="ingestion_run")
-    outbox_events: Mapped[list[MarketDataOutboxEvent]] = relationship(back_populates="ingestion_run")
+    outbox_events: Mapped[list[MarketDataOutboxEvent]] = relationship(
+        back_populates="ingestion_run"
+    )
 
 
 class RawOddsPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -229,7 +241,11 @@ class RawOddsPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "idempotency_key",
             name="uq_market_data_raw_odds_payloads_provider_key",
         ),
-        Index("ix_market_data_raw_odds_payloads_provider_fixture", "provider_name", "provider_fixture_id"),
+        Index(
+            "ix_market_data_raw_odds_payloads_provider_fixture",
+            "provider_name",
+            "provider_fixture_id",
+        ),
         Index("ix_market_data_raw_odds_payloads_checksum", "checksum"),
     )
 
@@ -269,7 +285,7 @@ class RawOddsPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class MarketProviderMapping(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """Provider-neutral external-to-canonical mapping for fixtures, bookmakers, markets, and selections."""
+    """External-to-canonical mapping for fixtures, bookmakers, markets, and selections."""
 
     __tablename__ = "market_data_provider_mappings"
     __table_args__ = (
@@ -372,7 +388,9 @@ class OddsSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     decimal_odds: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
     implied_probability: Mapped[Decimal] = mapped_column(Numeric(12, 8), nullable=False)
-    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     checksum: Mapped[str] = mapped_column(String(64), nullable=False)
 
     ingestion_run: Mapped[OddsIngestionRun] = relationship(back_populates="snapshots")
@@ -445,7 +463,9 @@ class OddsMovement(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     previous_decimal_odds: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
     current_decimal_odds: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
     delta_decimal_odds: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
-    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     details: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default="{}")
 
     market: Mapped[Market] = relationship(back_populates="movements")
@@ -459,7 +479,7 @@ class OddsMovement(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class OddsAudit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """Append-only audit of validation, ignored prices, snapshots, and movements for each raw payload."""
+    """Append-only audit of validation, prices, snapshots, and movements for raw payloads."""
 
     __tablename__ = "market_data_odds_audit"
     __table_args__ = (

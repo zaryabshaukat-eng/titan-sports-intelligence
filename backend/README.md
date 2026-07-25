@@ -1,8 +1,8 @@
 # TITAN Core Backend
 
-This directory contains the TITAN OS backend foundation and the Phase 2.3.2 Fixture Ingestion Pipeline. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, authentication extension points, observability, canonical Sports Domain, and auditable provider-neutral fixture ingestion.
+This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion Pipeline, and Phase 2.3.3 Market Data & Odds Ingestion context. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, authentication extension points, observability, canonical sports data, auditable fixture ingestion, and immutable odds history.
 
-It intentionally contains no odds, statistics, research, machine learning, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
+It intentionally contains no statistics, feature engineering, research, machine learning, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
 
 ## Prerequisites
 
@@ -54,9 +54,22 @@ Its response is a per-payload summary of inserted, updated, unchanged, and valid
 
 `fixture_feed_v1` is a reference adapter and demonstrates the expected provider-specific contract. Follow [the ingestion module guide](app/modules/ingestion/README.md) to add a new provider adapter without changing canonical Sports Domain models or ingestion business logic.
 
+## Market Data & Odds Ingestion
+
+The protected internal odds endpoint accepts source-provider batches and writes immutable historical snapshots:
+
+```text
+POST /api/v1/market-data/ingestion/odds/odds_feed_v1
+Authorization: Bearer <configured-token>
+```
+
+It resolves fixtures through Fixture Ingestion identities, appends price observations rather than overwriting them, detects market movement, and writes audit/outbox records in the same transaction. Read-only history, latest odds, fixture odds, market odds, bookmaker, market, and movement endpoints are available under `/api/v1/market-data`.
+
+See [the Market Data module guide](app/modules/market_data/README.md) for the reference payload, movement rules, and second-provider integration process.
+
 ## Database migrations
 
-Alembic includes the canonical Sports Domain migration and the Fixture Ingestion Pipeline migration. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
+Alembic includes the canonical Sports Domain, Fixture Ingestion, and Market Data & Odds Ingestion migrations. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
 
 ```powershell
 alembic upgrade head

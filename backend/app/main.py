@@ -18,6 +18,9 @@ from app.core.middleware import RequestIdMiddleware, RequestLoggingMiddleware
 from app.core.observability import create_metrics
 from app.core.security import SecurityHeadersMiddleware
 from app.modules.ingestion.providers.registry import build_default_registry
+from app.modules.market_data.providers.registry import (
+    build_default_registry as build_odds_provider_registry,
+)
 from app.shared.persistence.database import DatabaseSessionManager
 from app.shared.redis import RedisClient
 
@@ -30,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.redis = RedisClient(settings.redis_url)
     app.state.token_verifier = None
     app.state.fixture_provider_registry = build_default_registry()
+    app.state.odds_provider_registry = build_odds_provider_registry()
 
     try:
         yield
@@ -66,6 +70,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {
                 "name": "Fixture Ingestion",
                 "description": "Protected provider-neutral fixture import operations.",
+            },
+            {
+                "name": "Market Data",
+                "description": "Protected immutable odds ingestion and internal market history.",
             },
         ],
         lifespan=lifespan,

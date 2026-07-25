@@ -141,7 +141,7 @@ class MarketDataEntityResolver:
         value: NormalizedMarket,
         observed_at: datetime,
     ) -> ResolvedMarket:
-        """Resolve a market and apply a newer provider status without rewriting historical movements."""
+        """Resolve a market and apply only a newer provider status."""
         market_type = await self._resolve_market_type(value)
         incoming_status = await self._resolve_market_status(value.status_code)
         mapped = await self._mapped_entity(
@@ -230,7 +230,10 @@ class MarketDataEntityResolver:
                     [
                         {
                             "path": "selection",
-                            "message": "provider selection identity resolves to a different canonical market",
+                            "message": (
+                                "provider selection identity resolves to a different "
+                                "canonical market"
+                            ),
                             "type": "selection_market_conflict",
                         }
                     ]
@@ -288,7 +291,7 @@ class MarketDataEntityResolver:
         return market_type
 
     async def _resolve_market_status(self, status_code: str) -> MarketStatus:
-        """Resolve only configured market statuses; source-provider status mapping is adapter-owned."""
+        """Resolve configured market statuses; adapters own source-status mapping."""
         market_status = await self.session.scalar(
             select(MarketStatus).where(MarketStatus.code == status_code)
         )
@@ -324,7 +327,7 @@ class MarketDataEntityResolver:
     def _validate_market_identity(
         market: Market, fixture_id: UUID, market_type_id: UUID, value: NormalizedMarket
     ) -> None:
-        """Prevent a source market identity from being silently repointed to a new canonical market."""
+        """Prevent a source market identity from being repointed to a different market."""
         if (
             market.fixture_id != fixture_id
             or market.market_type_id != market_type_id
@@ -335,14 +338,19 @@ class MarketDataEntityResolver:
                 [
                     {
                         "path": "market",
-                        "message": "provider market identity conflicts with immutable canonical market identity",
+                        "message": (
+                            "provider market identity conflicts with immutable "
+                            "canonical market identity"
+                        ),
                         "type": "market_identity_conflict",
                     }
                 ]
             )
 
     @staticmethod
-    def _broken_mapping_error(entity_type: str, provider_entity_id: str) -> OddsPayloadValidationError:
+    def _broken_mapping_error(
+        entity_type: str, provider_entity_id: str
+    ) -> OddsPayloadValidationError:
         """Create a consistent audit-safe error for dangling external-to-canonical links."""
         return OddsPayloadValidationError(
             [

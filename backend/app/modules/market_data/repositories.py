@@ -172,7 +172,7 @@ class MarketDataIngestionRepository:
 
     @staticmethod
     def deactivate_mapping(mapping: MarketProviderMapping, observed_at: datetime) -> None:
-        """Retire a provider-specific selection listing without deleting historical identity evidence."""
+        """Retire a source selection listing while preserving historical identity evidence."""
         mapping.is_active = False
         mapping.removed_at = observed_at
         mapping.last_seen_at = observed_at

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
@@ -307,7 +307,11 @@ class OddsSnapshotFilters(BaseModel):
     @model_validator(mode="after")
     def validate_time_window(self) -> OddsSnapshotFilters:
         """Reject contradictory history filters before database access."""
-        if self.observed_after and self.observed_before and self.observed_after > self.observed_before:
+        if (
+            self.observed_after
+            and self.observed_before
+            and self.observed_after > self.observed_before
+        ):
             raise ValueError("observed_after must be earlier than or equal to observed_before")
         return self
 

@@ -10,15 +10,16 @@ This directory contains long-lived technical architecture documentation. Documen
 | [002-database.md](002-database.md) | PostgreSQL, Redis, migrations, and persistence standards |
 | [003-sports-domain.md](003-sports-domain.md) | Canonical provider-neutral Sports Domain |
 | [004-ingestion.md](004-ingestion.md) | Provider-neutral fixture ingestion, audit, and transactional outbox |
+| [005-market-data.md](005-market-data.md) | Immutable odds history, market lifecycle, movement tracking, and audit |
 | [phase-2-architecture-review.md](phase-2-architecture-review.md) | Original Phase 2 architecture blueprint and governance additions |
 
 ## Reserved future documents
 
 The following numbers are reserved for their respective implementation milestones and should be created when that module begins work, not as empty placeholders:
 
-- `005-feature-store.md`
-- `006-research-engine.md`
-- `007-probability-engine.md`
-- `008-consensus-engine.md`
-- `009-risk-engine.md`
-- `010-explainability.md`
+- `006-feature-store.md`
+- `007-research-engine.md`
+- `008-probability-engine.md`
+- `009-consensus-engine.md`
+- `010-risk-engine.md`
+- `011-explainability.md`

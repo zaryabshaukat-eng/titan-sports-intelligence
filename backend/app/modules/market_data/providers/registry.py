@@ -16,7 +16,7 @@ class OddsProviderRegistry:
         self._adapters: dict[str, OddsProviderAdapter] = {}
 
     def register(self, adapter: OddsProviderAdapter) -> None:
-        """Register one provider name once; duplicate registration is a startup configuration error."""
+        """Register a provider once; duplicates are startup configuration errors."""
         if adapter.provider_name in self._adapters:
             raise OddsProviderAlreadyRegisteredError(
                 f"An odds adapter is already registered for '{adapter.provider_name}'."
