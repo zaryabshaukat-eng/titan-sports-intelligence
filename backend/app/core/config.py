@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     outbox_max_attempts: int = 8
     outbox_retry_initial_seconds: float = 1.0
     outbox_retry_max_seconds: float = 300.0
+    outbox_retry_backoff_multiplier: float = 2.0
+    outbox_shutdown_timeout_seconds: float = 30.0
     readiness_timeout_seconds: float = 2.0
 
     identity_provider: str = "development"

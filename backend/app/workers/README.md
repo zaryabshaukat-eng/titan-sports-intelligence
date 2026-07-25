@@ -13,4 +13,6 @@ Successful events are marked `published_at`. Failures receive exponential backof
 
 Delivery is **at-least-once**. `event_key` is unique in every source outbox and is supplied as the consumer idempotency key. A future in-process subscriber or external transport must deduplicate on that value.
 
-Worker metrics are emitted through the worker-local Prometheus registry: claimed, delivered, retried, dead-lettered, lease-conflict, and per-poll pending counts, each labelled by bounded context.
+Worker metrics are emitted through the worker-local Prometheus registry: claimed, delivered (use its Prometheus rate for throughput), retried, dead-lettered, lease-conflict, per-poll pending counts, and processing duration, each labelled by bounded context.
+
+Configure polling, batch size, lease duration, retry cap/delays/backoff multiplier, and graceful-shutdown timeout through the `TITAN_OUTBOX_*` settings. Shutdown stops acquiring new rows and gives the in-flight serial batch `TITAN_OUTBOX_SHUTDOWN_TIMEOUT_SECONDS` to finish; a timed-out item remains unpublished and is recovered after its lease expires.

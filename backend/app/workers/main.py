@@ -31,6 +31,8 @@ async def main() -> None:
         max_attempts=settings.outbox_max_attempts,
         retry_initial_seconds=settings.outbox_retry_initial_seconds,
         retry_max_seconds=settings.outbox_retry_max_seconds,
+        retry_backoff_multiplier=settings.outbox_retry_backoff_multiplier,
+        shutdown_timeout_seconds=settings.outbox_shutdown_timeout_seconds,
     )
     try:
         await worker.run_forever(settings.outbox_poll_interval_seconds, stop_event)

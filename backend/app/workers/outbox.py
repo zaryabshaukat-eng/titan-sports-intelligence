@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Any, Protocol
 from uuid import UUID, uuid4
 
-from prometheus_client import CollectorRegistry, Counter, Gauge
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 from sqlalchemy import Select, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -71,6 +73,7 @@ class OutboxWorkerMetrics:
     dead_lettered: Counter = field(init=False)
     lease_conflicts: Counter = field(init=False)
     pending: Gauge = field(init=False)
+    processing_duration_seconds: Histogram = field(init=False)
 
     def __post_init__(self) -> None:
         labels = ("context",)
@@ -104,6 +107,12 @@ class OutboxWorkerMetrics:
             labels,
             registry=self.registry,
         )
+        self.processing_duration_seconds = Histogram(
+            "titan_outbox_processing_duration_seconds",
+            "Duration of one outbox dispatch attempt.",
+            labels,
+            registry=self.registry,
+        )
 
 
 class TransactionalOutboxWorker:
@@ -125,6 +134,8 @@ class TransactionalOutboxWorker:
         max_attempts: int = 8,
         retry_initial_seconds: float = 1.0,
         retry_max_seconds: float = 300.0,
+        retry_backoff_multiplier: float = 2.0,
+        shutdown_timeout_seconds: float = 30.0,
         metrics: OutboxWorkerMetrics | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
@@ -135,6 +146,8 @@ class TransactionalOutboxWorker:
         self._max_attempts = max_attempts
         self._retry_initial_seconds = retry_initial_seconds
         self._retry_max_seconds = retry_max_seconds
+        self._retry_backoff_multiplier = retry_backoff_multiplier
+        self._shutdown_timeout_seconds = shutdown_timeout_seconds
         self._metrics = metrics or OutboxWorkerMetrics()
         self._now = now or (lambda: datetime.now(UTC))
         self.worker_id = str(uuid4())
@@ -150,9 +163,32 @@ class TransactionalOutboxWorker:
         return delivered
 
     async def run_forever(self, poll_interval_seconds: float, stop_event: asyncio.Event) -> None:
-        """Poll until a caller signals shutdown; an idle worker sleeps without busy waiting."""
+        """Poll until shutdown, draining an active batch within the configured timeout."""
         while not stop_event.is_set():
-            delivered = await self.run_once()
+            poll_task = asyncio.create_task(self.run_once())
+            shutdown_task = asyncio.create_task(stop_event.wait())
+            done, _ = await asyncio.wait(
+                {poll_task, shutdown_task}, return_when=asyncio.FIRST_COMPLETED
+            )
+            if shutdown_task in done:
+                if not poll_task.done():
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.shield(poll_task), timeout=self._shutdown_timeout_seconds
+                        )
+                    except TimeoutError:
+                        poll_task.cancel()
+                        with suppress(asyncio.CancelledError):
+                            await poll_task
+                        logger.warning(
+                            "outbox.shutdown_timeout",
+                            extra={"extra_fields": {"worker_id": self.worker_id}},
+                        )
+                return
+            shutdown_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await shutdown_task
+            delivered = poll_task.result()
             if delivered:
                 continue
             try:
@@ -201,12 +237,31 @@ class TransactionalOutboxWorker:
         ]
 
     async def _deliver(self, message: OutboxMessage, model: OutboxModel) -> int:
+        started = perf_counter()
         try:
             await self._sink.deliver(message)
         except Exception as exc:  # Sink adapters intentionally define their own recoverable errors.
-            await self._record_failure(message, model, exc)
+            duration = perf_counter() - started
+            self._metrics.processing_duration_seconds.labels(context=message.context).observe(duration)
+            await self._record_failure(message, model, exc, duration)
             return 0
-        return 1 if await self._acknowledge(message, model) else 0
+        duration = perf_counter() - started
+        self._metrics.processing_duration_seconds.labels(context=message.context).observe(duration)
+        acknowledged = await self._acknowledge(message, model)
+        if acknowledged:
+            logger.info(
+                "outbox.event_published",
+                extra={
+                    "extra_fields": {
+                        "worker_id": self.worker_id,
+                        "event_id": str(message.event_id),
+                        "event_type": message.event_type,
+                        "attempt": message.attempts,
+                        "duration_ms": round(duration * 1000, 3),
+                    }
+                },
+            )
+        return 1 if acknowledged else 0
 
     async def _acknowledge(self, message: OutboxMessage, model: OutboxModel) -> bool:
         now = self._now()
@@ -231,7 +286,14 @@ class TransactionalOutboxWorker:
             logger.warning(
                 "outbox.lease_lost_before_ack",
                 extra={
-                    "extra_fields": {"event_key": message.event_key, "context": message.context}
+                    "extra_fields": {
+                        "worker_id": self.worker_id,
+                        "event_id": str(message.event_id),
+                        "event_type": message.event_type,
+                        "attempt": message.attempts,
+                        "event_key": message.event_key,
+                        "context": message.context,
+                    }
                 },
             )
             return False
@@ -239,7 +301,7 @@ class TransactionalOutboxWorker:
         return True
 
     async def _record_failure(
-        self, message: OutboxMessage, model: OutboxModel, exc: Exception
+        self, message: OutboxMessage, model: OutboxModel, exc: Exception, duration_seconds: float
     ) -> None:
         now = self._now()
         error = f"{exc.__class__.__name__}: {exc}"[:2000]
@@ -253,7 +315,8 @@ class TransactionalOutboxWorker:
             values["dead_lettered_at"] = now
         else:
             delay = min(
-                self._retry_initial_seconds * (2 ** max(message.attempts - 1, 0)),
+                self._retry_initial_seconds
+                * (self._retry_backoff_multiplier ** max(message.attempts - 1, 0)),
                 self._retry_max_seconds,
             )
             values["next_attempt_at"] = now + timedelta(seconds=delay)
@@ -274,8 +337,12 @@ class TransactionalOutboxWorker:
                 extra={
                     "extra_fields": {
                         "event_key": message.event_key,
+                        "worker_id": self.worker_id,
+                        "event_id": str(message.event_id),
+                        "event_type": message.event_type,
                         "context": message.context,
                         "attempt": message.attempts,
+                        "duration_ms": round(duration_seconds * 1000, 3),
                         "error": error,
                     }
                 },
@@ -287,8 +354,12 @@ class TransactionalOutboxWorker:
                 extra={
                     "extra_fields": {
                         "event_key": message.event_key,
+                        "worker_id": self.worker_id,
+                        "event_id": str(message.event_id),
+                        "event_type": message.event_type,
                         "context": message.context,
                         "attempt": message.attempts,
+                        "duration_ms": round(duration_seconds * 1000, 3),
                         "error": error,
                     }
                 },

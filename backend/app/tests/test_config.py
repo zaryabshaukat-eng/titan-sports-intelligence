@@ -11,9 +11,13 @@ def test_settings_load_from_environment(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("TITAN_DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
     monkeypatch.setenv("TITAN_REDIS_URL", "redis://localhost:6379/1")
     monkeypatch.setenv("TITAN_CORS_ORIGINS", "http://localhost:5000,http://localhost:3000")
+    monkeypatch.setenv("TITAN_OUTBOX_RETRY_BACKOFF_MULTIPLIER", "3")
+    monkeypatch.setenv("TITAN_OUTBOX_SHUTDOWN_TIMEOUT_SECONDS", "12.5")
 
     settings = Settings(_env_file=None)
 
     assert settings.app_env is AppEnvironment.TESTING
     assert settings.database_url.endswith("/test")
     assert settings.cors_origins == ["http://localhost:5000", "http://localhost:3000"]
+    assert settings.outbox_retry_backoff_multiplier == 3
+    assert settings.outbox_shutdown_timeout_seconds == 12.5
