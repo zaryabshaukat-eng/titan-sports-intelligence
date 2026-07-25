@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy import (
     Enum as SqlEnum,
@@ -347,6 +348,14 @@ class OddsSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "market_id",
             "observed_at",
         ),
+        Index(
+            "ix_market_data_odds_snapshots_latest_series",
+            "provider_name",
+            "bookmaker_id",
+            "selection_id",
+            text("observed_at DESC"),
+            text("created_at DESC"),
+        ),
     )
 
     ingestion_run_id: Mapped[UUID] = mapped_column(
@@ -532,6 +541,12 @@ class MarketDataOutboxEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("event_key", name="uq_market_data_outbox_events_event_key"),
         Index("ix_market_data_outbox_events_unpublished", "published_at", "occurred_at"),
+        Index(
+            "ix_market_data_outbox_events_delivery_ready",
+            "next_attempt_at",
+            "lease_expires_at",
+            postgresql_where=text("published_at IS NULL AND dead_lettered_at IS NULL"),
+        ),
     )
 
     ingestion_run_id: Mapped[UUID] = mapped_column(

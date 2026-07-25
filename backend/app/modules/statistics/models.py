@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.dialects.postgresql import JSONB
@@ -79,13 +80,11 @@ class StatisticVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_providers.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     category_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_categories.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     version: Mapped[str] = mapped_column(String(64), nullable=False)
     schema: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default="{}")
@@ -102,7 +101,6 @@ class FixtureStatistic(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("sports_fixtures.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     category_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -127,13 +125,11 @@ class TeamStatistic(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("sports_fixtures.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     team_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("sports_teams.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     category_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -154,7 +150,7 @@ class StatisticPlayer(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("name", "birth_date", name="uq_statistics_players_name_birth_date"),
     )
-    name: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
     birth_date: Mapped[str | None] = mapped_column(String(10))
     nationality: Mapped[str | None] = mapped_column(String(2))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
@@ -175,13 +171,11 @@ class PlayerStatistic(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("sports_fixtures.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     player_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_players.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     team_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("sports_teams.id", ondelete="RESTRICT")
@@ -210,7 +204,6 @@ class StatisticIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_providers.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     status: Mapped[StatisticsRunStatus] = mapped_column(
         SqlEnum(StatisticsRunStatus, name="statistics_run_status"), nullable=False
@@ -230,7 +223,7 @@ class RawStatisticPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "statistics_raw_payloads"
     __table_args__ = (
         UniqueConstraint("provider_id", "idempotency_key", name="uq_statistics_raw_provider_key"),
-        Index("ix_statistics_raw_checksum", "checksum"),
+        Index("ix_statistics_raw_payloads_checksum", "checksum"),
         Index("ix_statistics_raw_ingestion_run", "ingestion_run_id"),
         Index("ix_statistics_raw_fixture", "canonical_fixture_id"),
     )
@@ -238,7 +231,6 @@ class RawStatisticPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_ingestion_runs.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
     )
     provider_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -299,12 +291,12 @@ class StatisticSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "checksum",
             name="uq_statistics_snapshot_observation",
         ),
-        Index("ix_statistics_snapshots_fixture_observed", "fixture_id", "observed_at"),
+        Index("ix_statistics_snapshots_fixture_id_observed_at", "fixture_id", "observed_at"),
         Index(
             "ix_statistics_snapshots_series_latest",
             "series_id",
-            "observed_at",
-            "created_at",
+            text("observed_at DESC"),
+            text("created_at DESC"),
         ),
         Index("ix_statistics_snapshots_ingestion_run", "ingestion_run_id"),
         Index("ix_statistics_snapshots_raw_payload", "raw_payload_id"),
@@ -332,9 +324,7 @@ class StatisticSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     scope: Mapped[StatisticScope] = mapped_column(
         SqlEnum(StatisticScope, name="statistics_scope"), nullable=False
     )
-    series_id: Mapped[UUID] = mapped_column(
-        PostgreSQLUUID(as_uuid=True), nullable=False, index=True
-    )
+    series_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     fixture_statistic_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("statistics_fixture_statistics.id", ondelete="RESTRICT"),
@@ -389,6 +379,12 @@ class StatisticsOutboxEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_statistics_outbox_ingestion_run", "ingestion_run_id"),
         Index("ix_statistics_outbox_raw_payload", "raw_payload_id"),
         Index("ix_statistics_outbox_unpublished", "published_at", "created_at"),
+        Index(
+            "ix_statistics_outbox_events_delivery_ready",
+            "next_attempt_at",
+            "lease_expires_at",
+            postgresql_where=text("published_at IS NULL AND dead_lettered_at IS NULL"),
+        ),
     )
     ingestion_run_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),

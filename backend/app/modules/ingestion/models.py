@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy import (
     Enum as SqlEnum,
@@ -257,6 +258,12 @@ class IngestionOutboxEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("event_key", name="uq_ingestion_outbox_events_event_key"),
         Index("ix_ingestion_outbox_events_unpublished", "published_at", "occurred_at"),
+        Index(
+            "ix_ingestion_outbox_events_delivery_ready",
+            "next_attempt_at",
+            "lease_expires_at",
+            postgresql_where=text("published_at IS NULL AND dead_lettered_at IS NULL"),
+        ),
     )
 
     ingestion_run_id: Mapped[UUID] = mapped_column(
