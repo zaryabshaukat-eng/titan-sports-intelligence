@@ -17,6 +17,10 @@ class StatisticsPayloadValidationError(StatisticsError):
         self.errors = errors
 
 
+class StatisticsConflictError(StatisticsError):
+    """A concurrent writer prevented a deterministic Statistics operation."""
+
+
 class StatisticsResolutionError(StatisticsError):
     """A provider reference cannot safely resolve to a canonical entity."""
 

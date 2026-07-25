@@ -69,11 +69,14 @@ def test_statistics_failure_uses_savepoint_and_retains_only_failure_evidence() -
             provider_id="provider-id",
             status=StatisticsRunStatus.RUNNING,
             failed_count=0,
+            snapshots_created_count=0,
         )
 
         result = await service._one("provider-id", run, 0, _payload())
 
-        assert session.savepoint_count == 1
+        # One savepoint protects retry-safe raw receipt; the other rolls back
+        # any partially-created canonical categories, series, or snapshots.
+        assert session.savepoint_count == 2
         assert result.outcome == StatisticsAuditOutcome.VALIDATION_FAILED
         assert run.failed_count == 1
         assert not any(entity.__class__.__name__ == "StatisticSnapshot" for entity in session.added)
@@ -82,6 +85,56 @@ def test_statistics_failure_uses_savepoint_and_retains_only_failure_evidence() -
             "StatisticAudit",
             "StatisticsOutboxEvent",
         }
+
+    asyncio.run(run())
+
+
+def test_statistics_success_records_only_applied_evidence_after_savepoints() -> None:
+    async def run() -> None:
+        session = _Session()
+        service = StatisticsIngestionService(session, StatisticsFeedV1Adapter())
+        service.repository.fixture = AsyncMock(return_value="fixture-id")
+        service.repository.provider = AsyncMock(return_value=SimpleNamespace(id="provider-id"))
+        service._append_snapshots = AsyncMock(return_value=1)
+        run = StatisticIngestionRun(
+            provider_id="provider-id",
+            status=StatisticsRunStatus.RUNNING,
+            failed_count=0,
+            snapshots_created_count=0,
+        )
+
+        result = await service._one("provider-id", run, 0, _payload())
+
+        assert result.outcome == StatisticsAuditOutcome.PROCESSED
+        assert result.snapshots_created == 1
+        assert run.snapshots_created_count == 1
+        assert session.savepoint_count == 2
+        assert {entity.__class__.__name__ for entity in session.added} >= {
+            "RawStatisticPayload",
+            "StatisticAudit",
+            "StatisticsOutboxEvent",
+        }
+
+    asyncio.run(run())
+
+
+def test_malformed_payload_keeps_raw_evidence_without_canonical_savepoint() -> None:
+    async def run() -> None:
+        session = _Session()
+        service = StatisticsIngestionService(session, StatisticsFeedV1Adapter())
+        run = StatisticIngestionRun(
+            provider_id="provider-id",
+            status=StatisticsRunStatus.RUNNING,
+            failed_count=0,
+        )
+
+        result = await service._one("provider-id", run, 0, {"fixture": {}})
+
+        assert result.outcome == StatisticsAuditOutcome.VALIDATION_FAILED
+        assert result.validation_errors
+        assert session.savepoint_count == 1
+        assert run.failed_count == 1
+        assert not any(entity.__class__.__name__ == "StatisticSnapshot" for entity in session.added)
 
     asyncio.run(run())
 

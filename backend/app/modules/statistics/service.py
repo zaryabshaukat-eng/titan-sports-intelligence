@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.modules.statistics.enums import (
     RawStatisticPayloadStatus,
     StatisticsAuditOutcome,
@@ -19,6 +20,7 @@ from app.modules.statistics.enums import (
     StatisticsRunStatus,
 )
 from app.modules.statistics.exceptions import (
+    StatisticsConflictError,
     StatisticsError,
     StatisticsPayloadValidationError,
     StatisticsPersistenceError,
@@ -34,6 +36,8 @@ from app.modules.statistics.models import (
 from app.modules.statistics.providers.base import StatisticsProviderAdapter
 from app.modules.statistics.repositories import StatisticsRepository
 from app.modules.statistics.schemas import IngestionItemRead, StatisticsIngestionResult
+
+logger = get_logger(__name__)
 
 
 class StatisticsIngestionService:
@@ -76,31 +80,21 @@ class StatisticsIngestionService:
         checksum = hashlib.sha256(
             json.dumps(payload, sort_keys=True, default=str, separators=(",", ":")).encode()
         ).hexdigest()
-        fixture_provider, fixture_id = self.adapter.extract_fixture_reference(payload)
-        existing = await self.session.scalar(
-            select(RawStatisticPayload).where(
-                RawStatisticPayload.provider_id == provider_id,
-                RawStatisticPayload.idempotency_key == checksum,
-            )
+        raw, is_new = await self._create_raw_payload_once(
+            run=run,
+            provider_id=provider_id,
+            checksum=checksum,
+            payload=payload,
         )
-        if existing:
+        if not is_new:
             return IngestionItemRead(
                 source_index=index, outcome=StatisticsAuditOutcome.UNCHANGED, snapshots_created=0
             )
-        raw = RawStatisticPayload(
-            ingestion_run_id=run.id,
-            provider_id=provider_id,
-            fixture_provider_name=fixture_provider,
-            provider_fixture_id=fixture_id,
-            checksum=checksum,
-            idempotency_key=checksum,
-            payload=payload,
-            validation_status=RawStatisticPayloadStatus.RECEIVED,
-        )
-        self.session.add(raw)
-        await self.session.flush()
+        canonical_writes_started = False
         try:
             normalized = self._normalize(payload)
+            raw.fixture_provider_name = normalized.fixture.provider
+            raw.provider_fixture_id = normalized.fixture.id
             fixture = await self.repository.fixture(
                 normalized.fixture.provider, normalized.fixture.id
             )
@@ -109,6 +103,7 @@ class StatisticsIngestionService:
                     "Fixture must already exist through Fixture Ingestion."
                 )
             provider = await self.repository.provider(self.adapter.provider_name)
+            canonical_writes_started = True
             async with self.session.begin_nested():
                 created = await self._append_snapshots(
                     provider_id=provider_id,
@@ -121,7 +116,14 @@ class StatisticsIngestionService:
                     provider=provider,
                 )
         except StatisticsError as exc:
-            return self._record_validation_failure(run, index, raw, checksum, self._errors(exc))
+            return self._record_validation_failure(
+                run,
+                index,
+                raw,
+                checksum,
+                self._errors(exc),
+                rolled_back=canonical_writes_started,
+            )
         except IntegrityError:
             return self._record_validation_failure(
                 run,
@@ -131,6 +133,7 @@ class StatisticsIngestionService:
                 self._errors(
                     StatisticsPersistenceError("A concurrent statistics write conflicted.")
                 ),
+                rolled_back=canonical_writes_started,
             )
         else:
             raw.canonical_fixture_id = fixture
@@ -168,6 +171,50 @@ class StatisticsIngestionService:
                 )
             )
             return IngestionItemRead(source_index=index, outcome=outcome, snapshots_created=created)
+
+    async def _create_raw_payload_once(
+        self,
+        *,
+        run: StatisticIngestionRun,
+        provider_id: Any,
+        checksum: str,
+        payload: dict[str, object],
+    ) -> tuple[RawStatisticPayload, bool]:
+        """Persist immutable evidence once, handling concurrent idempotent retries safely."""
+        existing = await self.session.scalar(
+            select(RawStatisticPayload).where(
+                RawStatisticPayload.provider_id == provider_id,
+                RawStatisticPayload.idempotency_key == checksum,
+            )
+        )
+        if existing is not None:
+            return existing, False
+
+        raw = RawStatisticPayload(
+            ingestion_run_id=run.id,
+            provider_id=provider_id,
+            checksum=checksum,
+            idempotency_key=checksum,
+            payload=payload,
+            validation_status=RawStatisticPayloadStatus.RECEIVED,
+        )
+        try:
+            async with self.session.begin_nested():
+                self.session.add(raw)
+                await self.session.flush()
+        except IntegrityError as exc:
+            existing = await self.session.scalar(
+                select(RawStatisticPayload).where(
+                    RawStatisticPayload.provider_id == provider_id,
+                    RawStatisticPayload.idempotency_key == checksum,
+                )
+            )
+            if existing is not None:
+                return existing, False
+            raise StatisticsConflictError(
+                "A concurrent raw-payload write could not be resolved deterministically."
+            ) from exc
+        return raw, True
 
     def _normalize(self, payload: dict[str, object]):
         """Convert source validation errors into explicit audit-safe domain errors."""
@@ -233,6 +280,8 @@ class StatisticsIngestionService:
         raw: RawStatisticPayload,
         checksum: str,
         errors: list[dict[str, Any]],
+        *,
+        rolled_back: bool,
     ) -> IngestionItemRead:
         """Persist only raw payload and failure evidence after savepoint rollback."""
         raw.validation_status = RawStatisticPayloadStatus.INVALID
@@ -258,6 +307,19 @@ class StatisticsIngestionService:
                 event_key=f"{run.id}:{raw.id}",
                 payload={"source_index": index, "errors": errors},
             )
+        )
+        logger.warning(
+            "statistics.payload_validation_failed",
+            extra={
+                "extra_fields": {
+                    "provider": self.adapter.provider_name,
+                    "fixture_provider": raw.fixture_provider_name,
+                    "provider_fixture_id": raw.provider_fixture_id,
+                    "payload_checksum": checksum,
+                    "reason": errors,
+                    "canonical_writes_rolled_back": rolled_back,
+                }
+            },
         )
         return IngestionItemRead(
             source_index=index,
