@@ -1,0 +1,1 @@
+"""Statistics source adapters."""
