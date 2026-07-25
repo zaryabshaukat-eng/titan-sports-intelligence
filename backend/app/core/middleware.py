@@ -74,6 +74,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             metrics.observe_request(
                 request.method, route_path, response.status_code, duration_seconds
             )
+            if duration_seconds >= request.app.state.settings.slow_request_threshold_seconds:
+                metrics.observe_slow_request(route_path)
+
+        principal = getattr(request.state, "principal", None)
+        slow_request_threshold = request.app.state.settings.slow_request_threshold_seconds
 
         logger.info(
             "request.completed",
@@ -83,6 +88,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "path": route_path,
                     "status_code": response.status_code,
                     "duration_ms": round(duration_seconds * 1000, 2),
+                    "result": (
+                        "slow"
+                        if duration_seconds >= slow_request_threshold
+                        else "completed"
+                    ),
+                    "subject": getattr(principal, "subject", None),
+                    "provider": getattr(principal, "provider", None),
                 }
             },
         )

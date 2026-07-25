@@ -19,10 +19,18 @@ class _ReadyDependency:
     async def ping(self) -> bool:
         return True
 
+    async def outbox_backlog(self) -> dict[str, int]:
+        return {"fixture_ingestion": 2, "market_data": 0, "statistics": 1}
+
 
 class _FailedDependency:
     async def ping(self) -> bool:
         raise ConnectionError("unavailable")
+
+
+class _ReadyIdentity:
+    async def health(self) -> bool:
+        return True
 
 
 def test_readiness_reports_each_dependency_without_exposing_errors() -> None:
@@ -33,6 +41,7 @@ def test_readiness_reports_each_dependency_without_exposing_errors() -> None:
                 state=SimpleNamespace(
                     database=_ReadyDependency(),
                     redis=_FailedDependency(),
+                    identity_provider=_ReadyIdentity(),
                     metrics=metrics,
                     settings=SimpleNamespace(readiness_timeout_seconds=0.1),
                 )
@@ -44,7 +53,13 @@ def test_readiness_reports_each_dependency_without_exposing_errors() -> None:
 
         assert response.status_code == 503
         assert result.status == "not_ready"
-        assert result.checks == {"database": "ready", "redis": "not_ready"}
+        assert result.checks == {
+            "database": "ready",
+            "redis": "not_ready",
+            "identity": "ready",
+            "outbox": "ready",
+        }
+        assert result.outbox_backlog["fixture_ingestion"] == 2
 
     asyncio.run(run())
 
@@ -77,3 +92,18 @@ def test_ingestion_metrics_capture_provider_success_and_validation_failures() ->
         'titan_provider_last_success_unixtime{context="statistics",provider="provider-a"}'
         in exported
     )
+
+
+def test_operational_metrics_capture_authentication_and_outbox_signals() -> None:
+    metrics, _ = create_metrics()
+
+    metrics.observe_authentication_failure("development")
+    metrics.observe_authorization_failure("fixtures:ingest")
+    metrics.observe_outbox_backlog("statistics", 4)
+    metrics.observe_slow_request("/health")
+    exported = generate_latest(metrics.registry).decode()
+
+    assert 'titan_authentication_failures_total{provider="development"} 1.0' in exported
+    assert 'titan_authorization_failures_total{permission="fixtures:ingest"} 1.0' in exported
+    assert 'titan_outbox_backlog{context="statistics"} 4.0' in exported
+    assert 'titan_slow_requests_total{path="/health"} 1.0' in exported

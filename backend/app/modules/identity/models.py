@@ -10,10 +10,20 @@ class Permission(StrEnum):
     """Stable backend permission vocabulary independent of identity-provider claims."""
 
     DATA_READ = "data:read"
+    SPORTS_READ = "sports:read"
+    FIXTURES_READ = "fixtures:read"
+    STATISTICS_READ = "statistics:read"
+    MARKET_READ = "market:read"
+    INGESTION_EXECUTE = "ingestion:execute"
+    INGESTION_READ = "ingestion:read"
     FIXTURE_INGEST = "fixtures:ingest"
     MARKET_DATA_INGEST = "market_data:ingest"
     STATISTICS_INGEST = "statistics:ingest"
     OUTBOX_OPERATE = "outbox:operate"
+    RESEARCH_EXECUTE = "research:execute"
+    CONFIGURATION_MANAGE = "configuration:manage"
+    AUDIT_READ = "audit:read"
+    IDENTITY_MANAGE = "identity:manage"
 
 
 class Role(StrEnum):
@@ -23,6 +33,8 @@ class Role(StrEnum):
     DATA_INGESTOR = "data_ingestor"
     ANALYST = "analyst"
     OPERATOR = "operator"
+    RESEARCHER = "researcher"
+    VIEWER = "viewer"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
@@ -37,6 +49,25 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     ),
     Role.ANALYST: frozenset({Permission.DATA_READ}),
     Role.OPERATOR: frozenset({Permission.DATA_READ, Permission.OUTBOX_OPERATE}),
+    Role.RESEARCHER: frozenset(
+        {
+            Permission.DATA_READ,
+            Permission.SPORTS_READ,
+            Permission.FIXTURES_READ,
+            Permission.STATISTICS_READ,
+            Permission.MARKET_READ,
+            Permission.RESEARCH_EXECUTE,
+        }
+    ),
+    Role.VIEWER: frozenset(
+        {
+            Permission.DATA_READ,
+            Permission.SPORTS_READ,
+            Permission.FIXTURES_READ,
+            Permission.STATISTICS_READ,
+            Permission.MARKET_READ,
+        }
+    ),
 }
 
 
@@ -47,6 +78,7 @@ class Principal:
     subject: str
     organization_id: str | None
     roles: frozenset[Role]
+    provider: str = "unknown"
 
     @property
     def permissions(self) -> frozenset[Permission]:

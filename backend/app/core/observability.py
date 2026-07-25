@@ -22,6 +22,10 @@ class ApplicationMetrics:
     ingestion_records: Counter
     validation_failures: Counter
     provider_last_success_unixtime: Gauge
+    authentication_failures: Counter
+    authorization_failures: Counter
+    outbox_backlog: Gauge
+    slow_requests: Counter
 
     def observe_request(
         self, method: str, path: str, status_code: int, duration_seconds: float
@@ -53,6 +57,18 @@ class ApplicationMetrics:
             self.provider_last_success_unixtime.labels(context=context, provider=provider).set(
                 time()
             )
+
+    def observe_authentication_failure(self, provider: str) -> None:
+        self.authentication_failures.labels(provider=provider).inc()
+
+    def observe_authorization_failure(self, permission: str) -> None:
+        self.authorization_failures.labels(permission=permission).inc()
+
+    def observe_outbox_backlog(self, context: str, count: int) -> None:
+        self.outbox_backlog.labels(context=context).set(count)
+
+    def observe_slow_request(self, path: str) -> None:
+        self.slow_requests.labels(path=path).inc()
 
 
 def create_metrics() -> tuple[ApplicationMetrics, ASGIApp]:
@@ -106,6 +122,30 @@ def create_metrics() -> tuple[ApplicationMetrics, ASGIApp]:
             "titan_provider_last_success_unixtime",
             "Unix time of the latest ingestion batch with at least one accepted record.",
             labelnames=("context", "provider"),
+            registry=registry,
+        ),
+        authentication_failures=Counter(
+            "titan_authentication_failures_total",
+            "Rejected authentication attempts.",
+            labelnames=("provider",),
+            registry=registry,
+        ),
+        authorization_failures=Counter(
+            "titan_authorization_failures_total",
+            "Permission-denied authorization attempts.",
+            labelnames=("permission",),
+            registry=registry,
+        ),
+        outbox_backlog=Gauge(
+            "titan_outbox_backlog",
+            "Unpublished, non-dead-lettered outbox events.",
+            labelnames=("context",),
+            registry=registry,
+        ),
+        slow_requests=Counter(
+            "titan_slow_requests_total",
+            "HTTP requests exceeding the configured slow-request threshold.",
+            labelnames=("path",),
             registry=registry,
         ),
     )

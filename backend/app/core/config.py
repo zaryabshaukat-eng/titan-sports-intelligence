@@ -65,9 +65,19 @@ class Settings(BaseSettings):
     outbox_retry_max_seconds: float = 300.0
     outbox_retry_backoff_multiplier: float = 2.0
     outbox_shutdown_timeout_seconds: float = 30.0
+    outbox_backlog_warning_threshold: int = 1_000
+    slow_request_threshold_seconds: float = 1.0
+    slow_query_threshold_seconds: float = 0.5
+    outbox_retry_warning_threshold: int = 5
+    worker_timeout_seconds: float = 30.0
     readiness_timeout_seconds: float = 2.0
 
     identity_provider: str = "development"
+    jwt_issuer: str | None = None
+    jwt_audience: str | None = None
+    jwt_hs256_secret: SecretStr | None = None
+    jwt_public_key_pem: SecretStr | None = None
+    jwt_clock_skew_seconds: int = 30
     development_identity_credentials: dict[str, DevelopmentIdentityCredential] = {
         "titan-development-admin": DevelopmentIdentityCredential(
             subject="development-admin", roles=["titan_admin"]
@@ -130,6 +140,8 @@ class Settings(BaseSettings):
             raise ValueError("localhost is not a permitted production CORS origin")
         if self.identity_provider == "development":
             raise ValueError("production cannot use the development identity provider")
+        if self.identity_provider == "jwt" and self.jwt_hs256_secret is None:
+            raise ValueError("the jwt provider requires TITAN_JWT_HS256_SECRET in production")
         return self
 
     @property

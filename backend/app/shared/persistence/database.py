@@ -48,6 +48,23 @@ class DatabaseSessionManager:
             await connection.execute(text("SELECT 1"))
         return True
 
+    async def outbox_backlog(self) -> dict[str, int]:
+        """Return pending delivery counts without reading event payloads."""
+        statement = text(
+            "SELECT 'fixture_ingestion' AS context, count(*) AS total "
+            "FROM ingestion_outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL "
+            "UNION ALL "
+            "SELECT 'market_data' AS context, count(*) AS total "
+            "FROM market_data_outbox_events "
+            "WHERE published_at IS NULL AND dead_lettered_at IS NULL "
+            "UNION ALL "
+            "SELECT 'statistics' AS context, count(*) AS total "
+            "FROM statistics_outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL"
+        )
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).all()
+        return {str(row.context): int(row.total) for row in rows}
+
     async def dispose(self) -> None:
         """Release the application connection pool during shutdown."""
         await self._engine.dispose()

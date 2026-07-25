@@ -9,11 +9,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse, Response
 
+from app.core.logging import get_logger
 from app.modules.identity.models import Permission, Principal
 from app.modules.identity.providers import IdentityAuthenticationError, IdentityProvider
 
 bearer_scheme = HTTPBearer(auto_error=False)
 BearerCredentials = Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)]
+logger = get_logger(__name__)
 
 
 def _authentication_error(code: str, message: str, status_code: int) -> HTTPException:
@@ -57,6 +59,19 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         try:
             request.state.principal = await provider.authenticate(credential)
         except IdentityAuthenticationError:
+            metrics = getattr(request.app.state, "metrics", None)
+            if metrics is not None:
+                metrics.observe_authentication_failure(request.app.state.settings.identity_provider)
+            logger.warning(
+                "identity.authentication_failed",
+                extra={
+                    "extra_fields": {
+                        "provider": request.app.state.settings.identity_provider,
+                        "endpoint": request.url.path,
+                        "outcome": "invalid",
+                    }
+                },
+            )
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={
@@ -67,6 +82,20 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 },
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        principal: Principal = request.state.principal
+        logger.info(
+            "identity.authentication_succeeded",
+            extra={
+                "extra_fields": {
+                    "subject": principal.subject,
+                    "provider": principal.provider,
+                    "roles": sorted(role.value for role in principal.roles),
+                    "permissions": sorted(permission.value for permission in principal.permissions),
+                    "endpoint": request.url.path,
+                    "outcome": "authenticated",
+                }
+            },
+        )
         return await call_next(request)
 
 
@@ -103,9 +132,26 @@ def require_permissions(*permissions: Permission):
     """Build a dependency requiring all named permissions for an internal operation."""
 
     async def authorize(
+        request: Request,
         principal: Annotated[Principal, Depends(require_authenticated_principal)],
     ) -> Principal:
         if not principal.permits(*permissions):
+            metrics = getattr(request.app.state, "metrics", None)
+            if metrics is not None:
+                for permission in permissions:
+                    metrics.observe_authorization_failure(permission.value)
+            logger.warning(
+                "identity.authorization_denied",
+                extra={
+                    "extra_fields": {
+                        "subject": principal.subject,
+                        "provider": principal.provider,
+                        "roles": sorted(role.value for role in principal.roles),
+                        "required_permissions": [permission.value for permission in permissions],
+                        "outcome": "forbidden",
+                    }
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={

@@ -1,0 +1,27 @@
+name: Backend validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[dev]"
+      - run: python -m ruff check app alembic
+      - run: python -m pytest app/tests -q --cov=app --cov-report=xml:coverage.xml
+      - run: python -m alembic upgrade head --sql
+      - run: python -m alembic downgrade head:base --sql
+      - run: python -m alembic upgrade head --sql
+      - run: docker compose -f ../docker-compose.yml config --quiet
+      - run: docker build -t titan-core-validation .

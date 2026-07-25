@@ -23,6 +23,7 @@ class ReadinessResponse(BaseModel):
 
     status: Literal["ready", "not_ready"]
     checks: dict[str, Literal["ready", "not_ready"]]
+    outbox_backlog: dict[str, int] = {}
 
 
 @router.get("/health", response_model=HealthResponse, status_code=status.HTTP_200_OK)
@@ -37,7 +38,7 @@ async def health_check() -> HealthResponse:
 
 @router.get("/ready", response_model=ReadinessResponse)
 async def readiness_check(request: Request, response: Response) -> ReadinessResponse:
-    """Verify PostgreSQL and Redis connectivity without exposing error internals."""
+    """Verify core dependencies and surface bounded operational backlog data."""
     timeout_seconds = request.app.state.settings.readiness_timeout_seconds
 
     async def check(name: str, operation: object) -> tuple[str, bool, float]:
@@ -50,14 +51,34 @@ async def readiness_check(request: Request, response: Response) -> ReadinessResp
 
     database = request.app.state.database
     redis = request.app.state.redis
-    results = await asyncio.gather(check("database", database.ping()), check("redis", redis.ping()))
+    identity = request.app.state.identity_provider
+    results = await asyncio.gather(
+        check("database", database.ping()),
+        check("redis", redis.ping()),
+        check("identity", identity.health()),
+    )
     metrics = getattr(request.app.state, "metrics", None)
     checks: dict[str, Literal["ready", "not_ready"]] = {}
     for name, healthy, duration in results:
         checks[name] = "ready" if healthy else "not_ready"
         if metrics is not None:
             metrics.observe_readiness(name, healthy, duration)
+    backlog: dict[str, int] = {}
+    if checks["database"] == "ready":
+        try:
+            backlog = await asyncio.wait_for(database.outbox_backlog(), timeout=timeout_seconds)
+        except Exception:
+            checks["outbox"] = "not_ready"
+        else:
+            checks["outbox"] = "ready"
+            if metrics is not None:
+                for context, count in backlog.items():
+                    metrics.observe_outbox_backlog(context, count)
+    else:
+        checks["outbox"] = "not_ready"
     is_ready = all(value == "ready" for value in checks.values())
     if not is_ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    return ReadinessResponse(status="ready" if is_ready else "not_ready", checks=checks)
+    return ReadinessResponse(
+        status="ready" if is_ready else "not_ready", checks=checks, outbox_backlog=backlog
+    )
