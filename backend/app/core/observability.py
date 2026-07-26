@@ -26,6 +26,7 @@ class ApplicationMetrics:
     authorization_failures: Counter
     outbox_backlog: Gauge
     slow_requests: Counter
+    infrastructure_events: Counter
 
     def observe_request(
         self, method: str, path: str, status_code: int, duration_seconds: float
@@ -69,6 +70,9 @@ class ApplicationMetrics:
 
     def observe_slow_request(self, path: str) -> None:
         self.slow_requests.labels(path=path).inc()
+
+    def observe_infrastructure(self, event: str, amount: int = 1) -> None:
+        self.infrastructure_events.labels(event=event).inc(amount)
 
 
 def create_metrics() -> tuple[ApplicationMetrics, ASGIApp]:
@@ -146,6 +150,12 @@ def create_metrics() -> tuple[ApplicationMetrics, ASGIApp]:
             "titan_slow_requests_total",
             "HTTP requests exceeding the configured slow-request threshold.",
             labelnames=("path",),
+            registry=registry,
+        ),
+        infrastructure_events=Counter(
+            "titan_infrastructure_events_total",
+            "Infrastructure cache, lock, queue, worker, scheduler, and throttle events.",
+            labelnames=("event",),
             registry=registry,
         ),
     )

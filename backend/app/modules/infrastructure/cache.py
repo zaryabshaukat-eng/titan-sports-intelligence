@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import TypeVar
 
+from app.modules.infrastructure.monitoring import metrics
+
 T = TypeVar("T")
 
 
@@ -17,8 +19,11 @@ class Cache:
     async def get(self, key: str) -> object | None:
         try:
             value = await self.redis.client.get(self.key(key))
+            metrics.cache_hits += int(bool(value))
+            metrics.cache_misses += int(not bool(value))
             return json.loads(value) if value else None
         except Exception:
+            metrics.cache_misses += 1
             return None
 
     async def set(self, key: str, value: object, ttl: int) -> bool:
