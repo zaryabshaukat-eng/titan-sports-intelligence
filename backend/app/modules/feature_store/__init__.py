@@ -1,1 +1,1 @@
-"""Future feature-store domain boundary."""
+"""Versioned, reproducible, canonical-data-only Feature Store bounded context."""

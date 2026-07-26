@@ -17,6 +17,9 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, RequestLoggingMiddleware
 from app.core.observability import create_metrics
 from app.core.security import AuthenticationMiddleware, SecurityHeadersMiddleware
+from app.modules.feature_store.registry import (
+    build_default_registry as build_feature_generator_registry,
+)
 from app.modules.identity.providers import build_identity_provider
 from app.modules.ingestion.providers.registry import build_default_registry
 from app.modules.market_data.providers.registry import (
@@ -39,6 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.fixture_provider_registry = build_default_registry()
     app.state.odds_provider_registry = build_odds_provider_registry()
     app.state.statistics_provider_registry = build_statistics_registry()
+    app.state.feature_generator_registry = build_feature_generator_registry()
 
     try:
         yield
@@ -83,6 +87,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {
                 "name": "Statistics",
                 "description": "Protected immutable statistic ingestion and historical analysis.",
+            },
+            {
+                "name": "Feature Store",
+                "description": "Versioned, reproducible immutable features from canonical data.",
             },
         ],
         lifespan=lifespan,

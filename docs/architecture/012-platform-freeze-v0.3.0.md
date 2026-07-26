@@ -55,14 +55,13 @@
 - Add load/query-plan benchmarks for latest fixture/odds/statistics reads and ingestion batch sizes; establish SLOs from measured p95/p99 latency and memory.
 - Add worker heartbeat/liveness using an external operational signal; do not infer it from API readiness.
 - Add ADRs for Identity Provider abstraction/JWT, observability, migration/index strategy, and local outbox worker delivery.
-- Align documentation numbering: the architecture index reserves `006` onward for future intelligence modules but does not list implemented Statistics, Identity, worker, or observability documents.
 
 ## Future enhancements
 
-- OpenTelemetry exporter/tracing backend, Grafana dashboards, and versioned alert rules.
+- OpenTelemetry exporter/tracing backend and Grafana dashboards.
 - Managed secret rotation, asymmetric JWT/JWKS support, rate limiting, and network policy enforcement.
 - Partitioning/retention policies once immutable payload/snapshot volume justifies them.
-- Feature Store, evaluation, model registry, governance, and explainability modules after their own design review.
+- Evaluation, model registry, governance, and explainability modules after their own design review.
 
 ## Platform assertions
 

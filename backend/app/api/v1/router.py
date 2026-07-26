@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.modules.feature_store.api import router as feature_store_router
 from app.modules.ingestion.api import router as ingestion_router
 from app.modules.market_data.api import router as market_data_router
 from app.modules.sports.api import router as sports_router
@@ -12,3 +13,4 @@ router.include_router(sports_router)
 router.include_router(ingestion_router)
 router.include_router(market_data_router)
 router.include_router(statistics_router)
+router.include_router(feature_store_router)

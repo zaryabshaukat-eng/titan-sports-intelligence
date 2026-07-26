@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex
 
+from app.modules.feature_store import models as feature_store_models  # noqa: F401
 from app.modules.ingestion import models as ingestion_models  # noqa: F401
 from app.modules.market_data import models as market_data_models  # noqa: F401
 from app.modules.sports import models as sports_models  # noqa: F401
@@ -77,3 +78,15 @@ def test_latest_snapshot_indexes_match_window_query_order_and_outbox_predicates(
         "ix_statistics_outbox_events_delivery_ready",
     ):
         assert "WHERE published_at IS NULL AND dead_lettered_at IS NULL" in indexes[name]
+    assert (
+        "(fixture_id, feature_definition_id, observed_at DESC)"
+        in indexes["ix_feature_store_values_fixture_definition_observed"]
+    )
+
+
+def test_feature_store_migration_enforces_append_only_history() -> None:
+    sql = _offline_upgrade_sql()
+
+    assert "CREATE FUNCTION feature_store_reject_mutation()" in sql
+    assert "CREATE TRIGGER feature_store_feature_values_immutable" in sql
+    assert "CREATE TRIGGER feature_store_lineage_immutable" in sql

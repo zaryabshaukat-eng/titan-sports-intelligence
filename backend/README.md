@@ -1,8 +1,8 @@
 # TITAN Core Backend
 
-This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics Ingestion, transactional outbox worker, identity foundation, and observability layer. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, RBAC/JWT extension points, auditable ingestion, and immutable historical observations.
+This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics Ingestion, Feature Store, transactional outbox worker, identity foundation, and observability layer. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, RBAC/JWT extension points, auditable ingestion, immutable historical observations, and versioned reproducible features.
 
-It intentionally contains no feature engineering, research, machine learning, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
+It intentionally contains no research, machine learning training, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
 
 ## Prerequisites
 
@@ -69,7 +69,7 @@ See [the Market Data module guide](app/modules/market_data/README.md) for the re
 
 ## Database migrations
 
-Alembic includes the canonical Sports Domain, Fixture Ingestion, and Market Data & Odds Ingestion migrations. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
+Alembic includes the canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics, and Feature Store migrations. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
 
 ```powershell
 alembic upgrade head
@@ -77,6 +77,12 @@ alembic revision --autogenerate -m "describe the change"
 ```
 
 Run migration commands from `backend/`. Review every generated migration before applying it.
+
+## Feature Store
+
+The Feature Store reads only canonical Sports, Statistics, and Market Data records. It never reads provider payloads. `POST /api/v1/feature-store/generations` generates a deterministic, immutable snapshot for a fixture and an explicit `as_of` timestamp; it requires `research:execute`. Read APIs under `/api/v1/feature-store` require `data:read` and expose Feature Set metadata, values, lineage, and validation evidence.
+
+See [the Feature Store module guide](app/modules/feature_store/README.md) for versions, generators, historical regeneration, and retrieval filters.
 
 ## Tests and checks
 
