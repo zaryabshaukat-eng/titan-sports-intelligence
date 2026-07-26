@@ -89,9 +89,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "status_code": response.status_code,
                     "duration_ms": round(duration_seconds * 1000, 2),
                     "result": (
-                        "slow"
-                        if duration_seconds >= slow_request_threshold
-                        else "completed"
+                        "slow" if duration_seconds >= slow_request_threshold else "completed"
                     ),
                     "subject": getattr(principal, "subject", None),
                     "provider": getattr(principal, "provider", None),

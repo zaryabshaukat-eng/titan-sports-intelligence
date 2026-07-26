@@ -242,7 +242,9 @@ class TransactionalOutboxWorker:
             await self._sink.deliver(message)
         except Exception as exc:  # Sink adapters intentionally define their own recoverable errors.
             duration = perf_counter() - started
-            self._metrics.processing_duration_seconds.labels(context=message.context).observe(duration)
+            self._metrics.processing_duration_seconds.labels(context=message.context).observe(
+                duration
+            )
             await self._record_failure(message, model, exc, duration)
             return 0
         duration = perf_counter() - started

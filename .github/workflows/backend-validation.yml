@@ -17,11 +17,57 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install ".[dev]"
+      - run: python -m pip install ".[dev]" mypy
       - run: python -m ruff check app alembic
+      - run: python -m ruff format --check app alembic
+      - run: python -m mypy app --ignore-missing-imports --follow-imports=skip
       - run: python -m pytest app/tests -q --cov=app --cov-report=xml:coverage.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: error
       - run: python -m alembic upgrade head --sql
       - run: python -m alembic downgrade head:base --sql
       - run: python -m alembic upgrade head --sql
       - run: docker compose -f ../docker-compose.yml config --quiet
       - run: docker build -t titan-core-validation .
+
+  postgresql-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: titan
+          POSTGRES_PASSWORD: titan
+          POSTGRES_DB: titan_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U titan -d titan_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TITAN_DATABASE_URL: postgresql+asyncpg://titan:titan@localhost:5432/titan_test
+      TITAN_TEST_DATABASE_URL: postgresql+asyncpg://titan:titan@localhost:5432/titan_test
+      TITAN_REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[dev]"
+      - run: python -m alembic upgrade head
+      - run: >-
+          python -m pytest app/tests/test_database.py app/tests/test_fixture_ingestion_integration.py
+          app/tests/test_market_data_integration.py app/tests/test_statistics_integration.py
+          app/tests/test_live_migration_validation.py -q

@@ -1,0 +1,34 @@
+groups:
+  - name: titan-v0.3.0
+    rules:
+      - alert: TitanWorkerFailures
+        expr: increase(titan_outbox_dead_lettered_total[15m]) > 0
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "TITAN outbox events are being dead-lettered" }
+      - alert: TitanQueueGrowth
+        expr: titan_outbox_backlog > 1000
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "TITAN outbox backlog exceeds release threshold" }
+      - alert: TitanRetryStorm
+        expr: increase(titan_outbox_retried_total[10m]) > 50
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "TITAN outbox retry rate is elevated" }
+      - alert: TitanSlowRequests
+        expr: increase(titan_slow_requests_total[15m]) > 25
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "TITAN slow-request threshold is repeatedly exceeded" }
+      - alert: TitanSlowDatabaseReadiness
+        expr: >-
+          histogram_quantile(0.95, sum(rate(titan_readiness_check_duration_seconds_bucket{dependency="database"}[10m])) by (le)) > 0.5
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "TITAN PostgreSQL readiness latency exceeds 500ms p95" }
+      - alert: TitanAuthenticationFailures
+        expr: increase(titan_authentication_failures_total[10m]) > 20
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "TITAN rejected authentication attempts are elevated" }

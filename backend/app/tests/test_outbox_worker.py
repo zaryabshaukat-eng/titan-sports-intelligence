@@ -165,9 +165,7 @@ def test_failure_dead_letters_at_the_configured_attempt_limit() -> None:
             attempts=2,
         )
 
-        await worker._record_failure(
-            message, IngestionOutboxEvent, RuntimeError("permanent"), 0.25
-        )
+        await worker._record_failure(message, IngestionOutboxEvent, RuntimeError("permanent"), 0.25)
 
         values = _updated_values(session.statement)
         assert values["dead_lettered_at"] == now
@@ -189,9 +187,7 @@ def test_claim_query_uses_skip_locked_and_recovers_expired_leases() -> None:
             now=lambda: datetime(2026, 7, 25, tzinfo=UTC),
         )
 
-        messages = await worker._claim(
-            "fixture_ingestion", IngestionOutboxEvent, "occurred_at"
-        )
+        messages = await worker._claim("fixture_ingestion", IngestionOutboxEvent, "occurred_at")
 
         compiled = str(
             session.statement.compile(

@@ -1,4 +1,16 @@
 services:
+  migrate:
+    build:
+      context: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      TITAN_APP_ENV: ${TITAN_APP_ENV:-development}
+      TITAN_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD:-titan}@db:5432/${POSTGRES_DB:-titan}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: ./backend
@@ -15,8 +27,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -36,8 +48,8 @@ services:
       TITAN_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD:-titan}@db:5432/${POSTGRES_DB:-titan}
       TITAN_REDIS_URL: redis://redis:6379/0
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "titan-core"
-version = "0.1.0"
-description = "TITAN OS backend foundation."
+version = "0.3.0"
+description = "TITAN OS data platform backend."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
@@ -28,6 +28,7 @@ dev = [
   "pytest>=8.2,<9.0",
   "pytest-cov>=5.0,<7.0",
   "ruff>=0.6,<1.0",
+  "mypy>=1.11,<2.0",
 ]
 
 [tool.hatch.build.targets.wheel]

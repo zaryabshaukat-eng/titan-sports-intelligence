@@ -24,6 +24,7 @@ from app.modules.identity.providers import (
 
 def _jwt(secret: str, claims: dict[str, object]) -> str:
     """Create a test-only HS256 token without adding a JWT runtime dependency."""
+
     def encode(value: bytes) -> str:
         return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 

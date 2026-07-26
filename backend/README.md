@@ -1,8 +1,8 @@
 # TITAN Core Backend
 
-This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion Pipeline, and Phase 2.3.3 Market Data & Odds Ingestion context. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, authentication extension points, observability, canonical sports data, auditable fixture ingestion, and immutable odds history.
+This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics Ingestion, transactional outbox worker, identity foundation, and observability layer. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, RBAC/JWT extension points, auditable ingestion, and immutable historical observations.
 
-It intentionally contains no statistics, feature engineering, research, machine learning, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
+It intentionally contains no feature engineering, research, machine learning, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
 
 ## Prerequisites
 

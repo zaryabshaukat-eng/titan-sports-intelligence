@@ -82,9 +82,7 @@ class DevelopmentIdentityProvider:
 class JwtIdentityProvider:
     """Strict local HS256 JWT validator for future OIDC/JWT integrations."""
 
-    def __init__(
-        self, *, issuer: str, audience: str, secret: str, clock_skew_seconds: int
-    ) -> None:
+    def __init__(self, *, issuer: str, audience: str, secret: str, clock_skew_seconds: int) -> None:
         self._issuer = issuer
         self._audience = audience
         self._secret = secret.encode("utf-8")
