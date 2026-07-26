@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -162,6 +162,10 @@ def require_permissions(*permissions: Permission):
             )
         return principal
 
+    # This metadata is documentation-only. The closure remains the established
+    # authorization implementation, while the OpenAPI composer can accurately
+    # publish required permissions without duplicating policy in routes.
+    cast(Any, authorize).required_permissions = tuple(permissions)
     return authorize
 
 

@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.monitoring import MonitoringApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.evaluation_monitoring.models import (
     Alert,
@@ -15,7 +16,6 @@ from app.modules.evaluation_monitoring.models import (
     ProviderHealth,
     ValidationRecord,
 )
-from app.modules.evaluation_monitoring.repositories import MonitoringRepository
 from app.modules.evaluation_monitoring.schemas import (
     AlertRead,
     LineageRead,
@@ -23,7 +23,6 @@ from app.modules.evaluation_monitoring.schemas import (
     RunRead,
     ValidationRead,
 )
-from app.modules.evaluation_monitoring.services import MonitoringService
 from app.modules.identity.models import Permission
 from app.shared.persistence.database import get_db_session
 
@@ -37,7 +36,7 @@ W = Annotated[Principal, Depends(require_permissions(Permission.EVALUATION_MONIT
 async def run(body: MonitoringRunCreate, s: S, p: W) -> RunRead:
     _ = p
     try:
-        return RunRead.model_validate(await MonitoringService(s).run(body))
+        return RunRead.model_validate(await MonitoringApiFacade(s).run(body))
     except ValueError as e:
         raise HTTPException(422, "monitoring_lineage_invalid") from e
 
@@ -45,20 +44,20 @@ async def run(body: MonitoringRunCreate, s: S, p: W) -> RunRead:
 @router.get("/runs", response_model=list[RunRead])
 async def runs(s: S, p: R) -> list[RunRead]:
     _ = p
-    return [RunRead.model_validate(x) for x in await MonitoringRepository(s).runs()]
+    return [RunRead.model_validate(x) for x in await MonitoringApiFacade(s).runs()]
 
 
 @router.get("/runs/{id}", response_model=RunRead)
 async def detail(id: UUID, s: S, p: R) -> RunRead:
     _ = p
-    value = await MonitoringRepository(s).run(id)
+    value = await MonitoringApiFacade(s).get(id)
     if value is None:
         raise HTTPException(404, "evaluation_run_not_found")
     return RunRead.model_validate(value)
 
 
 async def _items(model: object, id: UUID, s: AsyncSession):
-    return await MonitoringRepository(s).list_for(model, id)
+    return await MonitoringApiFacade(s).items(model, id)
 
 
 @router.get("/drift")
@@ -94,7 +93,7 @@ async def calibration_health(run_id: UUID, s: S, p: R):
 @router.get("/history", response_model=list[RunRead])
 async def history(s: S, p: R) -> list[RunRead]:
     _ = p
-    return [RunRead.model_validate(x) for x in await MonitoringRepository(s).runs()]
+    return [RunRead.model_validate(x) for x in await MonitoringApiFacade(s).runs()]
 
 
 @router.get("/alerts", response_model=list[AlertRead])

@@ -8,12 +8,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.feature_store import FeatureStoreApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.feature_store.exceptions import (
     FeatureGenerationResolutionError,
     FeatureSetVersionConflictError,
 )
-from app.modules.feature_store.repositories import FeatureStoreRepository
 from app.modules.feature_store.schemas import (
     FeatureDefinitionRead,
     FeatureGenerationRequest,
@@ -27,7 +27,6 @@ from app.modules.feature_store.schemas import (
     Page,
     PaginationParams,
 )
-from app.modules.feature_store.service import FeatureGenerationService
 from app.modules.identity.models import Permission
 from app.shared.persistence.database import get_db_session
 
@@ -36,6 +35,16 @@ SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 ReadPrincipal = Annotated[Principal, Depends(require_permissions(Permission.DATA_READ))]
 GeneratePrincipal = Annotated[Principal, Depends(require_permissions(Permission.RESEARCH_EXECUTE))]
 PaginationDependency = Annotated[PaginationParams, Depends()]
+
+
+def get_feature_generation_facade(
+    request: Request, session: SessionDependency
+) -> FeatureStoreApiFacade:
+    """Compose the write facade without exposing a generator registry to routes."""
+    return FeatureStoreApiFacade(session, request.app.state.feature_generator_registry)
+
+
+GenerationFacade = Annotated[FeatureStoreApiFacade, Depends(get_feature_generation_facade)]
 
 
 @router.post(
@@ -50,16 +59,13 @@ PaginationDependency = Annotated[PaginationParams, Depends()]
 )
 async def generate_features(
     body: FeatureGenerationRequest,
-    request: Request,
-    session: SessionDependency,
+    facade: GenerationFacade,
     principal: GeneratePrincipal,
 ) -> FeatureGenerationResult:
     """Execute deterministic generation without exposing provider payloads or training a model."""
     _ = principal
     try:
-        return await FeatureGenerationService(
-            session, request.app.state.feature_generator_registry
-        ).generate(body)
+        return await facade.generate(body)
     except FeatureGenerationResolutionError as exc:
         raise HTTPException(status_code=404, detail="feature_store_fixture_not_found") from exc
     except FeatureSetVersionConflictError as exc:
@@ -74,7 +80,7 @@ async def list_feature_sets(
 ) -> Page[FeatureSetRead]:
     """List stable Feature Set identities available for feature lookup or historical rebuilds."""
     _ = principal
-    items, total = await FeatureStoreRepository(session).feature_sets(pagination)
+    items, total = await FeatureStoreApiFacade(session).feature_sets(pagination)
     return Page(
         items=[FeatureSetRead.model_validate(item) for item in items],
         total=total,
@@ -97,7 +103,7 @@ async def list_feature_set_versions(
     _ = principal
     return [
         FeatureSetVersionRead.model_validate(item)
-        for item in await FeatureStoreRepository(session).versions(feature_set_code)
+        for item in await FeatureStoreApiFacade(session).versions(feature_set_code)
     ]
 
 
@@ -116,7 +122,7 @@ async def list_feature_definitions(
     _ = principal
     return [
         FeatureDefinitionRead.model_validate(item)
-        for item in await FeatureStoreRepository(session).definitions(
+        for item in await FeatureStoreApiFacade(session).definitions(
             feature_set_code, feature_set_version
         )
     ]
@@ -133,7 +139,7 @@ async def list_features(
 ) -> Page[FeatureValueRead]:
     """Query immutable values by any canonical subject, timestamp window, and feature version."""
     _ = principal
-    items, total = await FeatureStoreRepository(session).page_values(filters, pagination)
+    items, total = await FeatureStoreApiFacade(session).values(filters, pagination)
     return Page(
         items=[FeatureValueRead.model_validate(item) for item in items],
         total=total,
@@ -156,7 +162,7 @@ async def feature_lineage(
     _ = principal
     return [
         FeatureLineageRead.model_validate(item)
-        for item in await FeatureStoreRepository(session).lineage(feature_value_id)
+        for item in await FeatureStoreApiFacade(session).lineage(feature_value_id)
     ]
 
 
@@ -174,5 +180,5 @@ async def feature_validation(
     _ = principal
     return [
         FeatureValidationRead.model_validate(item)
-        for item in await FeatureStoreRepository(session).validation(feature_value_id)
+        for item in await FeatureStoreApiFacade(session).validation(feature_value_id)
     ]

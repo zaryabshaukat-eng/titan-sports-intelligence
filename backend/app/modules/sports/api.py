@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.facades.sports import SportsApiFacade
-from app.modules.sports.repositories import PageResult
 from app.modules.sports.schemas import (
     CompetitionFilters,
     CompetitionRead,
@@ -42,9 +41,18 @@ SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 PaginationDependency = Annotated[PaginationParams, Depends()]
 
 
-def _page[SchemaT: BaseModel](result: PageResult[object], schema: type[SchemaT]) -> Page[SchemaT]:
-    """Convert a repository page into its documented public response contract."""
-    return Page[SchemaT](
+class PageResultContract(Protocol):
+    """The facade-owned pagination result shape consumed by the transport adapter."""
+
+    items: list[object]
+    total: int
+    limit: int
+    offset: int
+
+
+def _page[SchemaT: BaseModel](result: PageResultContract, schema: type[SchemaT]) -> Page[SchemaT]:
+    """Convert a facade page into its documented public response contract."""
+    return Page(
         items=[schema.model_validate(item) for item in result.items],
         total=result.total,
         limit=result.limit,

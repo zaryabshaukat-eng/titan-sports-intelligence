@@ -2,26 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.market_data import MarketDataApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.identity.models import Permission
 from app.modules.market_data.exceptions import UnknownOddsProviderError
-from app.modules.market_data.providers.registry import OddsProviderRegistry
-from app.modules.market_data.read_repositories import (
-    BookmakerRepository,
-    MarketRepository,
-    MarketStatusRepository,
-    MarketTypeRepository,
-    OddsMovementRepository,
-    OddsSnapshotRepository,
-    PageResult,
-)
 from app.modules.market_data.schemas import (
     BookmakerFilters,
     BookmakerRead,
@@ -39,7 +30,6 @@ from app.modules.market_data.schemas import (
     PaginationParams,
     SelectionRead,
 )
-from app.modules.market_data.service import OddsIngestionService
 from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/market-data", tags=["Market Data"])
@@ -52,9 +42,28 @@ WritePrincipalDependency = Annotated[
 PaginationDependency = Annotated[PaginationParams, Depends()]
 
 
-def _page[SchemaT: BaseModel](result: PageResult[object], schema: type[SchemaT]) -> Page[SchemaT]:
-    """Convert repository entities to documented internal read-only response contracts."""
-    return Page[SchemaT](
+def get_market_data_ingestion_facade(
+    request: Request, session: SessionDependency
+) -> MarketDataApiFacade:
+    """Compose the write facade without exposing the provider registry to route handlers."""
+    return MarketDataApiFacade(session, request.app.state.odds_provider_registry)
+
+
+IngestionFacade = Annotated[MarketDataApiFacade, Depends(get_market_data_ingestion_facade)]
+
+
+class PageResultContract(Protocol):
+    """The facade-owned pagination result shape consumed by the transport adapter."""
+
+    items: list[object]
+    total: int
+    limit: int
+    offset: int
+
+
+def _page[SchemaT: BaseModel](result: PageResultContract, schema: type[SchemaT]) -> Page[SchemaT]:
+    """Convert facade entities to documented internal read-only response contracts."""
+    return Page(
         items=[schema.model_validate(item) for item in result.items],
         total=result.total,
         limit=result.limit,
@@ -89,14 +98,13 @@ async def ingest_odds_batch(
     provider_name: str,
     request_body: OddsIngestionRequest,
     request: Request,
-    session: SessionDependency,
+    facade: IngestionFacade,
     principal: WritePrincipalDependency,
 ) -> OddsIngestionBatchResult:
     """Run one registered odds-provider adapter inside the request-scoped transaction."""
     _ = principal
-    registry: OddsProviderRegistry = request.app.state.odds_provider_registry
     try:
-        adapter = registry.get(provider_name)
+        result = await facade.ingest(provider_name, request_body.payloads)
     except UnknownOddsProviderError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -105,9 +113,6 @@ async def ingest_odds_batch(
                 "message": f"Odds provider '{provider_name}' is not registered.",
             },
         ) from exc
-    result = await OddsIngestionService(session=session, provider_adapter=adapter).ingest(
-        request_body.payloads
-    )
     metrics = request.app.state.metrics
     if metrics is not None:
         failures = sum(item.outcome.value == "validation_failed" for item in result.items)
@@ -124,7 +129,9 @@ async def list_bookmakers(
 ) -> Page[BookmakerRead]:
     """List canonical active bookmaker identities for internal market operations."""
     _ = principal
-    return _page(await BookmakerRepository(session).list(filters, pagination), BookmakerRead)
+    return _page(
+        await MarketDataApiFacade(session).list_bookmakers(filters, pagination), BookmakerRead
+    )
 
 
 @router.get("/bookmakers/{bookmaker_id}", response_model=BookmakerRead, summary="Get a bookmaker")
@@ -134,7 +141,7 @@ async def get_bookmaker(
     """Fetch one active canonical bookmaker."""
     _ = principal
     bookmaker = _require(
-        await BookmakerRepository(session).get(bookmaker_id), "Bookmaker", bookmaker_id
+        await MarketDataApiFacade(session).get_bookmaker(bookmaker_id), "Bookmaker", bookmaker_id
     )
     return BookmakerRead.model_validate(bookmaker)
 
@@ -147,7 +154,7 @@ async def list_market_types(
 ) -> Page[MarketTypeRead]:
     """List extensible canonical market type definitions."""
     _ = principal
-    return _page(await MarketTypeRepository(session).list(pagination), MarketTypeRead)
+    return _page(await MarketDataApiFacade(session).list_market_types(pagination), MarketTypeRead)
 
 
 @router.get(
@@ -160,7 +167,9 @@ async def list_market_statuses(
 ) -> Page[MarketStatusRead]:
     """List configured canonical market lifecycle statuses."""
     _ = principal
-    return _page(await MarketStatusRepository(session).list(pagination), MarketStatusRead)
+    return _page(
+        await MarketDataApiFacade(session).list_market_statuses(pagination), MarketStatusRead
+    )
 
 
 @router.get("/markets", response_model=Page[MarketRead], summary="List fixture markets")
@@ -172,7 +181,7 @@ async def list_markets(
 ) -> Page[MarketRead]:
     """List canonical fixture markets with filterable type, status, period, and fixture scope."""
     _ = principal
-    return _page(await MarketRepository(session).list(filters, pagination), MarketRead)
+    return _page(await MarketDataApiFacade(session).list_markets(filters, pagination), MarketRead)
 
 
 @router.get("/markets/{market_id}", response_model=MarketRead, summary="Get a fixture market")
@@ -181,7 +190,7 @@ async def get_market(
 ) -> MarketRead:
     """Fetch one canonical market by UUID."""
     _ = principal
-    market = _require(await MarketRepository(session).get(market_id), "Market", market_id)
+    market = _require(await MarketDataApiFacade(session).get_market(market_id), "Market", market_id)
     return MarketRead.model_validate(market)
 
 
@@ -198,10 +207,9 @@ async def list_market_selections(
 ) -> Page[SelectionRead]:
     """List active and removed selections, preserving the complete historical market structure."""
     _ = principal
-    _require(await MarketRepository(session).get(market_id), "Market", market_id)
-    return _page(
-        await MarketRepository(session).list_selections(market_id, pagination), SelectionRead
-    )
+    facade = MarketDataApiFacade(session)
+    _require(await facade.get_market(market_id), "Market", market_id)
+    return _page(await facade.list_market_selections(market_id, pagination), SelectionRead)
 
 
 @router.get(
@@ -218,7 +226,7 @@ async def list_odds_snapshots(
     """List immutable price observations for audit, replay, and historical analysis."""
     _ = principal
     return _page(
-        await OddsSnapshotRepository(session).list_history(filters, pagination), OddsSnapshotRead
+        await MarketDataApiFacade(session).list_odds_history(filters, pagination), OddsSnapshotRead
     )
 
 
@@ -232,7 +240,7 @@ async def query_odds_history(
     """Query chronological immutable odds history using the same filter contract as snapshots."""
     _ = principal
     return _page(
-        await OddsSnapshotRepository(session).list_history(filters, pagination), OddsSnapshotRead
+        await MarketDataApiFacade(session).list_odds_history(filters, pagination), OddsSnapshotRead
     )
 
 
@@ -246,7 +254,7 @@ async def list_latest_odds(
     """List the latest observed price for each provider-bookmaker-selection combination."""
     _ = principal
     return _page(
-        await OddsSnapshotRepository(session).list_latest(filters, pagination), OddsSnapshotRead
+        await MarketDataApiFacade(session).list_latest_odds(filters, pagination), OddsSnapshotRead
     )
 
 
@@ -266,7 +274,7 @@ async def list_fixture_odds(
     _ = principal
     filters.fixture_id = fixture_id
     return _page(
-        await OddsSnapshotRepository(session).list_history(filters, pagination), OddsSnapshotRead
+        await MarketDataApiFacade(session).list_odds_history(filters, pagination), OddsSnapshotRead
     )
 
 
@@ -288,7 +296,7 @@ async def list_fixture_market_odds(
     filters.fixture_id = fixture_id
     filters.market_id = market_id
     return _page(
-        await OddsSnapshotRepository(session).list_history(filters, pagination), OddsSnapshotRead
+        await MarketDataApiFacade(session).list_odds_history(filters, pagination), OddsSnapshotRead
     )
 
 
@@ -305,4 +313,6 @@ async def list_movement_history(
 ) -> Page[OddsMovementRead]:
     """List append-only opening, closing, price, status, and selection lifecycle movements."""
     _ = principal
-    return _page(await OddsMovementRepository(session).list(filters, pagination), OddsMovementRead)
+    return _page(
+        await MarketDataApiFacade(session).list_movements(filters, pagination), OddsMovementRead
+    )

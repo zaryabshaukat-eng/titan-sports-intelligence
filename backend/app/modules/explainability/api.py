@@ -4,13 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.explainability import ExplainabilityApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.explainability.exceptions import (
     ExplainabilityResolutionError,
     ExplainabilityVersionConflictError,
 )
-from app.modules.explainability.registry import ExplainabilityRegistry
-from app.modules.explainability.repositories import ExplainabilityRepository
 from app.modules.explainability.schemas import (
     EvidenceReferenceRead,
     ExplainabilityLineageRead,
@@ -22,7 +21,6 @@ from app.modules.explainability.schemas import (
     FeatureContributionRead,
     ReasoningStepRead,
 )
-from app.modules.explainability.service import ExplainabilityService
 from app.modules.identity.models import Permission
 from app.shared.persistence.database import get_db_session
 
@@ -41,7 +39,7 @@ async def engines(principal: ReadPrincipal) -> list[ExplainerMetadataRead]:
         ExplainerMetadataRead(
             identifier=item.metadata.identifier, description=item.metadata.description
         )
-        for item in ExplainabilityRegistry().engines()
+        for item in ExplainabilityApiFacade.engines()
     ]
 
 
@@ -52,7 +50,7 @@ async def create_run(
     _ = principal
     try:
         return ExplainabilityRunRead.model_validate(
-            await ExplainabilityService(session).create_run(body)
+            await ExplainabilityApiFacade(session).create_run(body)
         )
     except ExplainabilityResolutionError as exc:
         raise HTTPException(status_code=404, detail="explainability_dependency_not_found") from exc
@@ -67,7 +65,7 @@ async def explanations(
     _ = principal
     return [
         ExplanationRead.model_validate(item)
-        for item in await ExplainabilityRepository(session).explanations(run_id)
+        for item in await ExplainabilityApiFacade(session).explanations(run_id)
     ]
 
 
@@ -78,7 +76,7 @@ async def contributions(
     _ = principal
     return [
         FeatureContributionRead.model_validate(item)
-        for item in await ExplainabilityRepository(session).contributions(id)
+        for item in await ExplainabilityApiFacade(session).contributions(id)
     ]
 
 
@@ -89,7 +87,7 @@ async def evidence(
     _ = principal
     return [
         EvidenceReferenceRead.model_validate(item)
-        for item in await ExplainabilityRepository(session).evidence(id)
+        for item in await ExplainabilityApiFacade(session).evidence(id)
     ]
 
 
@@ -100,7 +98,7 @@ async def reasoning(
     _ = principal
     return [
         ReasoningStepRead.model_validate(item)
-        for item in await ExplainabilityRepository(session).reasoning(id)
+        for item in await ExplainabilityApiFacade(session).reasoning(id)
     ]
 
 
@@ -109,7 +107,7 @@ async def lineage(
     id: UUID, session: SessionDependency, principal: ReadPrincipal
 ) -> ExplainabilityLineageRead | None:
     _ = principal
-    item = await ExplainabilityRepository(session).lineage(id)
+    item = await ExplainabilityApiFacade(session).lineage(id)
     return ExplainabilityLineageRead.model_validate(item) if item else None
 
 
@@ -120,5 +118,5 @@ async def validation(
     _ = principal
     return [
         ExplainabilityValidationRead.model_validate(item)
-        for item in await ExplainabilityRepository(session).validation(id)
+        for item in await ExplainabilityApiFacade(session).validation(id)
     ]

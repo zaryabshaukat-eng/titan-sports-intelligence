@@ -7,18 +7,25 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.ingestion import IngestionApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.identity.models import Permission
 from app.modules.ingestion.exceptions import UnknownProviderError
-from app.modules.ingestion.providers.registry import FixtureProviderRegistry
 from app.modules.ingestion.schemas import FixtureIngestionBatchResult, FixtureIngestionRequest
-from app.modules.ingestion.service import FixtureIngestionService
 from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/ingestion", tags=["Fixture Ingestion"])
 
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 PrincipalDependency = Annotated[Principal, Depends(require_permissions(Permission.FIXTURE_INGEST))]
+
+
+def get_ingestion_facade(request: Request, session: SessionDependency) -> IngestionApiFacade:
+    """Compose the API facade at the transport boundary without exposing a registry to routes."""
+    return IngestionApiFacade(session, request.app.state.fixture_provider_registry)
+
+
+FacadeDependency = Annotated[IngestionApiFacade, Depends(get_ingestion_facade)]
 
 
 @router.post(
@@ -35,14 +42,13 @@ async def ingest_fixture_batch(
     provider_name: str,
     request_body: FixtureIngestionRequest,
     request: Request,
-    session: SessionDependency,
+    facade: FacadeDependency,
     principal: PrincipalDependency,
 ) -> FixtureIngestionBatchResult:
     """Run one registered provider adapter inside the request-scoped database transaction."""
     _ = principal  # Authorization policy will be added to this protected boundary later.
-    registry: FixtureProviderRegistry = request.app.state.fixture_provider_registry
     try:
-        adapter = registry.get(provider_name)
+        result = await facade.ingest(provider_name, request_body.payloads)
     except UnknownProviderError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -52,9 +58,6 @@ async def ingest_fixture_batch(
             },
         ) from exc
 
-    result = await FixtureIngestionService(session=session, provider_adapter=adapter).ingest(
-        request_body.payloads
-    )
     metrics = request.app.state.metrics
     if metrics is not None:
         metrics.observe_ingestion(

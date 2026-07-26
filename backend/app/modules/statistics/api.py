@@ -4,12 +4,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.statistics import StatisticsApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.identity.models import Permission
-from app.modules.statistics.models import StatisticCategory, StatisticSnapshot
 from app.modules.statistics.schemas import (
     CategoryRead,
     Page,
@@ -18,7 +17,6 @@ from app.modules.statistics.schemas import (
     StatisticsIngestionRequest,
     StatisticsIngestionResult,
 )
-from app.modules.statistics.service import StatisticsIngestionService
 from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/statistics", tags=["Statistics"])
@@ -26,6 +24,14 @@ Session = Annotated[AsyncSession, Depends(get_db_session)]
 PrincipalDep = Annotated[Principal, Depends(require_permissions(Permission.DATA_READ))]
 WritePrincipalDep = Annotated[Principal, Depends(require_permissions(Permission.STATISTICS_INGEST))]
 PageDep = Annotated[Pagination, Depends()]
+
+
+def get_statistics_ingestion_facade(request: Request, session: Session) -> StatisticsApiFacade:
+    """Compose the write facade without leaking the provider registry to the route handler."""
+    return StatisticsApiFacade(session, request.app.state.statistics_provider_registry)
+
+
+IngestionFacade = Annotated[StatisticsApiFacade, Depends(get_statistics_ingestion_facade)]
 
 
 def page(
@@ -45,15 +51,14 @@ async def ingest(
     provider_name: str,
     body: StatisticsIngestionRequest,
     request: Request,
-    session: Session,
+    facade: IngestionFacade,
     principal: WritePrincipalDep,
 ) -> StatisticsIngestionResult:
     _ = principal
     try:
-        adapter = (request.app.state.statistics_provider_registry).get(provider_name)
+        result = await facade.ingest(provider_name, body.payloads)
     except KeyError as exc:
         raise HTTPException(404, detail="statistics_provider_not_found") from exc
-    result = await StatisticsIngestionService(session, adapter).ingest(body.payloads)
     metrics = request.app.state.metrics
     if metrics is not None:
         failures = sum(item.outcome == "validation_failed" for item in result.items)
@@ -64,17 +69,7 @@ async def ingest(
 @router.get("/categories", response_model=Page[CategoryRead])
 async def categories(p: PageDep, session: Session, principal: PrincipalDep) -> Page[object]:
     _ = principal
-    total = await session.scalar(select(func.count()).select_from(StatisticCategory)) or 0
-    rows = list(
-        (
-            await session.scalars(
-                select(StatisticCategory)
-                .order_by(StatisticCategory.code)
-                .offset(p.offset)
-                .limit(p.limit)
-            )
-        ).all()
-    )
+    rows, total = await StatisticsApiFacade(session).categories(p)
     return page(rows, total, p, CategoryRead)
 
 
@@ -86,33 +81,8 @@ async def snapshots(
     *,
     latest_only: bool = False,
 ) -> Page[object]:
-    q = select(StatisticSnapshot)
-    if latest_only:
-        ranked = select(
-            StatisticSnapshot.id.label("snapshot_id"),
-            func.row_number()
-            .over(
-                partition_by=StatisticSnapshot.series_id,
-                order_by=(
-                    StatisticSnapshot.observed_at.desc(),
-                    StatisticSnapshot.created_at.desc(),
-                ),
-            )
-            .label("rank"),
-        ).subquery()
-        q = q.join(ranked, ranked.c.snapshot_id == StatisticSnapshot.id).where(ranked.c.rank == 1)
-    if fixture_id:
-        q = q.where(StatisticSnapshot.fixture_id == fixture_id)
-    if scope:
-        q = q.where(StatisticSnapshot.scope == scope)
-    count = select(func.count()).select_from(q.order_by(None).subquery())
-    total = await session.scalar(count) or 0
-    rows = list(
-        (
-            await session.scalars(
-                q.order_by(StatisticSnapshot.observed_at.desc()).offset(p.offset).limit(p.limit)
-            )
-        ).all()
+    rows, total = await StatisticsApiFacade(session).snapshots(
+        fixture_id, scope, p, latest_only=latest_only
     )
     return page(rows, total, p, SnapshotRead)
 

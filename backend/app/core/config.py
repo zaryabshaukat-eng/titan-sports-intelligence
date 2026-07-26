@@ -7,7 +7,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Any
 
-from pydantic import BaseModel, SecretStr, field_validator, model_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -76,6 +76,13 @@ class Settings(BaseSettings):
     infrastructure_worker_concurrency: int = 4
     infrastructure_rate_limit_per_minute: int = 120
     infrastructure_retry_attempts: int = 3
+    api_rate_limit_anonymous_per_minute: int = Field(default=30, gt=0)
+    api_rate_limit_viewer_per_minute: int = Field(default=120, gt=0)
+    api_rate_limit_analyst_per_minute: int = Field(default=240, gt=0)
+    api_rate_limit_researcher_per_minute: int = Field(default=240, gt=0)
+    api_rate_limit_data_ingestor_per_minute: int = Field(default=120, gt=0)
+    api_rate_limit_operator_per_minute: int = Field(default=180, gt=0)
+    api_rate_limit_admin_per_minute: int = Field(default=600, gt=0)
 
     identity_provider: str = "development"
     jwt_issuer: str | None = None
@@ -153,6 +160,19 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Return whether this process is serving a production environment."""
         return self.app_env is AppEnvironment.PRODUCTION
+
+    @property
+    def api_rate_limits_per_minute(self) -> dict[str, int]:
+        """Return the role-keyed public API throttle policy from environment settings."""
+        return {
+            "anonymous": self.api_rate_limit_anonymous_per_minute,
+            "viewer": self.api_rate_limit_viewer_per_minute,
+            "analyst": self.api_rate_limit_analyst_per_minute,
+            "researcher": self.api_rate_limit_researcher_per_minute,
+            "data_ingestor": self.api_rate_limit_data_ingestor_per_minute,
+            "operator": self.api_rate_limit_operator_per_minute,
+            "titan_admin": self.api_rate_limit_admin_per_minute,
+        }
 
 
 @lru_cache
