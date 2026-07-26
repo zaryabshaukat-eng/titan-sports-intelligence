@@ -21,6 +21,10 @@ class Permission(StrEnum):
     STATISTICS_INGEST = "statistics:ingest"
     OUTBOX_OPERATE = "outbox:operate"
     RESEARCH_EXECUTE = "research:execute"
+    PROBABILITY_EXECUTE = "probability:execute"
+    CONSENSUS_EXECUTE = "consensus:execute"
+    RISK_EXECUTE = "risk:execute"
+    EXPLAINABILITY_EXECUTE = "explainability:execute"
     CONFIGURATION_MANAGE = "configuration:manage"
     AUDIT_READ = "audit:read"
     IDENTITY_MANAGE = "identity:manage"
@@ -57,6 +61,10 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.STATISTICS_READ,
             Permission.MARKET_READ,
             Permission.RESEARCH_EXECUTE,
+            Permission.PROBABILITY_EXECUTE,
+            Permission.CONSENSUS_EXECUTE,
+            Permission.RISK_EXECUTE,
+            Permission.EXPLAINABILITY_EXECUTE,
         }
     ),
     Role.VIEWER: frozenset(

@@ -1,8 +1,8 @@
 # TITAN Core Backend
 
-This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics Ingestion, Feature Store, transactional outbox worker, identity foundation, and observability layer. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, RBAC/JWT extension points, auditable ingestion, immutable historical observations, and versioned reproducible features.
+This directory contains the TITAN OS backend foundation, Canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics Ingestion, Feature Store, Research Engine, Probability Engine, Consensus Engine, transactional outbox worker, identity foundation, and observability layer. It provides the API host, configuration, PostgreSQL and Redis clients, migrations, structured logging, RBAC/JWT extension points, auditable ingestion, immutable historical observations, versioned reproducible features, reproducible statistical experiments, calibrated probability evidence, and consensus evidence.
 
-It intentionally contains no research, machine learning training, probability, consensus, risk, explainability, recommendation, or backtesting implementation.
+It intentionally contains no machine learning training, risk, explainability, recommendation, or backtesting implementation.
 
 ## Prerequisites
 
@@ -69,7 +69,7 @@ See [the Market Data module guide](app/modules/market_data/README.md) for the re
 
 ## Database migrations
 
-Alembic includes the canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics, and Feature Store migrations. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
+Alembic includes the canonical Sports Domain, Fixture Ingestion, Market Data & Odds, Statistics, Feature Store, Research Engine, Probability Engine, and Consensus Engine migrations. Future bounded modules must add their own reviewed migrations rather than modifying historical revisions.
 
 ```powershell
 alembic upgrade head
@@ -83,6 +83,24 @@ Run migration commands from `backend/`. Review every generated migration before 
 The Feature Store reads only canonical Sports, Statistics, and Market Data records. It never reads provider payloads. `POST /api/v1/feature-store/generations` generates a deterministic, immutable snapshot for a fixture and an explicit `as_of` timestamp; it requires `research:execute`. Read APIs under `/api/v1/feature-store` require `data:read` and expose Feature Set metadata, values, lineage, and validation evidence.
 
 See [the Feature Store module guide](app/modules/feature_store/README.md) for versions, generators, historical regeneration, and retrieval filters.
+
+## Research Engine
+
+The Research Engine accepts only a specific Feature Set version and materializes the selected Feature Store values into an immutable dataset snapshot. Experiments run descriptive, distribution, correlation, or exploratory significance analyses against those frozen rows, store the exact parameters and random seed, and write immutable lineage and validation evidence. It contains no predictive model training or recommendation logic. Write operations require `research:execute`; all read APIs under `/api/v1/research` require `data:read`.
+
+See [the Research Engine module guide](app/modules/research/README.md) for the experiment lifecycle, hypothesis evidence, reproducibility guarantees, and API inventory.
+
+## Probability Engine
+
+The Probability Engine consumes only immutable Research datasets and experiments. It supports registry-selected transparent baseline models, versioned Platt/isotonic/temperature calibration, immutable fixture estimates, evaluation metrics, and complete replay lineage. It produces no recommendation, stake, or betting decision. Execution under `/api/v1/probability` requires `probability:execute`; evidence reads require `data:read`.
+
+See [the Probability Engine module guide](app/modules/probability/README.md) for the inference, calibration, evaluation, ensemble, and validation contracts.
+
+## Consensus Engine
+
+The Consensus Engine combines compatible immutable Probability outputs through registry-selected strategies and records confidence, disagreement, completeness, validation, and full lineage. It does not compare odds or create any recommendation. Writes under `/api/v1/consensus` require `consensus:execute`; evidence reads require `data:read`.
+
+See [the Consensus Engine module guide](app/modules/consensus/README.md) for strategy, confidence, disagreement, and reproducibility details.
 
 ## Tests and checks
 

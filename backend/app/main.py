@@ -92,6 +92,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "name": "Feature Store",
                 "description": "Versioned, reproducible immutable features from canonical data.",
             },
+            {
+                "name": "Research",
+                "description": (
+                    "Reproducible statistical experiments over immutable Feature Store datasets."
+                ),
+            },
+            {
+                "name": "Probability",
+                "description": (
+                    "Calibrated, reproducible probability estimates over immutable "
+                    "Research datasets."
+                ),
+            },
+            {
+                "name": "Consensus",
+                "description": (
+                    "Evidence-only combination of compatible immutable probability outputs."
+                ),
+            },
+            {"name": "Risk", "description": "Immutable reliability and uncertainty assessments."},
+            {"name": "Explainability", "description": "Immutable traceable analytical evidence."},
         ],
         lifespan=lifespan,
     )

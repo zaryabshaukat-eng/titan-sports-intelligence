@@ -16,15 +16,14 @@ This directory contains long-lived technical architecture documentation. Documen
 | [008-identity-foundation.md](008-identity-foundation.md) | Pluggable identity, JWT validation, roles, and permissions |
 | [009-observability.md](009-observability.md) | Health, readiness, metrics, correlation, and operational thresholds |
 | [010-feature-store.md](010-feature-store.md) | Versioned, reproducible Feature Store and deterministic canonical-data generators |
+| [011-research-engine.md](011-research-engine.md) | Immutable Feature Store dataset snapshots and reproducible statistical experiments |
+| [013-probability-engine.md](013-probability-engine.md) | Calibrated, immutable probability runs, outputs, evaluation, and lineage |
+| [014-consensus-engine.md](014-consensus-engine.md) | Evidence-only combination, confidence, disagreement, and lineage |
+| [015-risk-engine.md](015-risk-engine.md) | Immutable uncertainty, stability, calibration, agreement, and data-quality assessments |
+| [016-explainability.md](016-explainability.md) | Immutable contributions, evidence, reasoning chains, confidence, and lineage |
 | [phase-2-architecture-review.md](phase-2-architecture-review.md) | Original Phase 2 architecture blueprint and governance additions |
 | [012-platform-freeze-v0.3.0.md](012-platform-freeze-v0.3.0.md) | v0.3.0 architecture audit, scores, release gates, and freeze decision |
 
 ## Reserved future documents
 
 The following numbers are reserved for their respective implementation milestones and should be created when that module begins work, not as empty placeholders:
-
-- `011-research-engine.md`
-- `013-probability-engine.md`
-- `014-consensus-engine.md`
-- `015-risk-engine.md`
-- `016-explainability.md`

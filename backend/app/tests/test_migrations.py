@@ -9,9 +9,14 @@ from pathlib import Path
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex
 
+from app.modules.consensus import models as consensus_models  # noqa: F401
+from app.modules.explainability import models as explainability_models  # noqa: F401
 from app.modules.feature_store import models as feature_store_models  # noqa: F401
 from app.modules.ingestion import models as ingestion_models  # noqa: F401
 from app.modules.market_data import models as market_data_models  # noqa: F401
+from app.modules.probability import models as probability_models  # noqa: F401
+from app.modules.research import models as research_models  # noqa: F401
+from app.modules.risk import models as risk_models  # noqa: F401
 from app.modules.sports import models as sports_models  # noqa: F401
 from app.modules.statistics import models as statistics_models  # noqa: F401
 from app.shared.persistence.base import Base
@@ -90,3 +95,46 @@ def test_feature_store_migration_enforces_append_only_history() -> None:
     assert "CREATE FUNCTION feature_store_reject_mutation()" in sql
     assert "CREATE TRIGGER feature_store_feature_values_immutable" in sql
     assert "CREATE TRIGGER feature_store_lineage_immutable" in sql
+
+
+def test_research_migration_enforces_append_only_artifacts() -> None:
+    """Research snapshots and evidence must remain immutable after insertion."""
+    sql = _offline_upgrade_sql()
+
+    assert "CREATE FUNCTION research_reject_mutation()" in sql
+    assert "CREATE TRIGGER research_dataset_snapshots_immutable" in sql
+    assert "CREATE TRIGGER research_experiments_immutable" in sql
+    assert "CREATE TRIGGER research_hypothesis_evaluations_immutable" in sql
+
+
+def test_probability_migration_enforces_append_only_artifacts() -> None:
+    """Probability configurations, estimates, and scores must remain immutable evidence."""
+    sql = _offline_upgrade_sql()
+
+    assert "CREATE FUNCTION probability_reject_mutation()" in sql
+    assert "CREATE TRIGGER probability_runs_immutable" in sql
+    assert "CREATE TRIGGER probability_outputs_immutable" in sql
+    assert "CREATE TRIGGER probability_evaluations_immutable" in sql
+
+
+def test_consensus_migration_enforces_append_only_artifacts() -> None:
+    """Consensus probabilities and their evidence must remain immutable historical records."""
+    sql = _offline_upgrade_sql()
+
+    assert "CREATE FUNCTION consensus_reject_mutation()" in sql
+    assert "CREATE TRIGGER consensus_runs_immutable" in sql
+    assert "CREATE TRIGGER consensus_outputs_immutable" in sql
+
+
+def test_risk_migration_enforces_append_only_artifacts() -> None:
+    sql = _offline_upgrade_sql()
+    assert "CREATE FUNCTION risk_reject_mutation()" in sql
+    assert "CREATE TRIGGER risk_runs_immutable" in sql
+    assert "CREATE TRIGGER risk_outputs_immutable" in sql
+
+
+def test_explainability_migration_enforces_append_only_artifacts() -> None:
+    sql = _offline_upgrade_sql()
+    assert "CREATE FUNCTION explainability_reject_mutation()" in sql
+    assert "CREATE TRIGGER explainability_runs_immutable" in sql
+    assert "CREATE TRIGGER explanations_immutable" in sql

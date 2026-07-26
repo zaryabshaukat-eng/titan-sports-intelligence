@@ -10,9 +10,14 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from app.core.config import get_settings
+from app.modules.consensus import models as consensus_models  # noqa: F401
+from app.modules.explainability import models as explainability_models  # noqa: F401
 from app.modules.feature_store import models as feature_store_models  # noqa: F401
 from app.modules.ingestion import models as ingestion_models  # noqa: F401
 from app.modules.market_data import models as market_data_models  # noqa: F401
+from app.modules.probability import models as probability_models  # noqa: F401
+from app.modules.research import models as research_models  # noqa: F401
+from app.modules.risk import models as risk_models  # noqa: F401
 from app.modules.sports import models as sports_models  # noqa: F401
 from app.modules.statistics import models as statistics_models  # noqa: F401
 from app.shared.persistence.base import Base
