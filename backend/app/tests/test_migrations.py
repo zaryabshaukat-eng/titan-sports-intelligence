@@ -11,6 +11,7 @@ from sqlalchemy.schema import CreateIndex
 
 from app.modules.consensus import models as consensus_models  # noqa: F401
 from app.modules.evaluation import models as evaluation_models  # noqa: F401
+from app.modules.evaluation_monitoring import models as evaluation_monitoring_models  # noqa: F401
 from app.modules.explainability import models as explainability_models  # noqa: F401
 from app.modules.feature_store import models as feature_store_models  # noqa: F401
 from app.modules.ingestion import models as ingestion_models  # noqa: F401
@@ -146,3 +147,10 @@ def test_backtest_migration_enforces_append_only_artifacts() -> None:
     assert "CREATE FUNCTION backtest_reject_mutation()" in sql
     assert "CREATE TRIGGER backtest_runs_immutable" in sql
     assert "CREATE TRIGGER backtest_results_immutable" in sql
+
+
+def test_monitoring_migration_enforces_append_only_artifacts() -> None:
+    sql = _offline_upgrade_sql()
+    assert "CREATE FUNCTION monitoring_reject_mutation()" in sql
+    assert "CREATE TRIGGER monitoring_evaluation_runs_immutable" in sql
+    assert "CREATE TRIGGER monitoring_drift_measurements_immutable" in sql

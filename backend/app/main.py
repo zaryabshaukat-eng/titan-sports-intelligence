@@ -117,6 +117,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "name": "Evaluation",
                 "description": "Deterministic historical backtesting and simulation.",
             },
+            {"name": "Continuous Evaluation", "description": "Append-only analytical health monitoring."},
         ],
         lifespan=lifespan,
     )

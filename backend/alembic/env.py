@@ -12,6 +12,7 @@ from alembic import context
 from app.core.config import get_settings
 from app.modules.consensus import models as consensus_models  # noqa: F401
 from app.modules.evaluation import models as evaluation_models  # noqa: F401
+from app.modules.evaluation_monitoring import models as evaluation_monitoring_models  # noqa: F401
 from app.modules.explainability import models as explainability_models  # noqa: F401
 from app.modules.feature_store import models as feature_store_models  # noqa: F401
 from app.modules.ingestion import models as ingestion_models  # noqa: F401
