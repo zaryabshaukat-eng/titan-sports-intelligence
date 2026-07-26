@@ -1,6 +1,8 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.modules.consensus.enums import ConsensusRunStatus
+from app.modules.consensus.models import ConsensusLineage, ConsensusOutput, ConsensusRun
 from app.modules.risk.enums import RiskValidationStatus
 
 
@@ -12,7 +14,9 @@ class Finding:
 
 
 def validate(
-    consensus: object, outputs: list[object], lineage: object | None
+    consensus: ConsensusRun,
+    outputs: Sequence[ConsensusOutput],
+    lineage: ConsensusLineage | None,
 ) -> tuple[Finding, ...]:
     return (
         Finding(

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
+from typing import cast
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.consensus.confidence import metrics as confidence_metrics
 from app.modules.consensus.disagreement import metrics as disagreement_metrics
-from app.modules.consensus.engines import ConsensusEstimate
+from app.modules.consensus.engines import ConsensusEstimate, ConsensusStrategyEngine
 from app.modules.consensus.enums import ConsensusRunStatus, ConsensusValidationStatus
 from app.modules.consensus.exceptions import ConsensusResolutionError, ConsensusVersionConflictError
 from app.modules.consensus.lineage import build_lineage, fingerprint
@@ -22,6 +25,7 @@ from app.modules.consensus.registry import ConsensusStrategyRegistry
 from app.modules.consensus.repositories import ConsensusRepository
 from app.modules.consensus.schemas import ConsensusRunCreate
 from app.modules.consensus.validation import validate
+from app.modules.probability.models import ProbabilityEvaluation, ProbabilityOutput, ProbabilityRun
 
 
 class ConsensusService:
@@ -131,7 +135,7 @@ class ConsensusService:
         outputs = await self._repository.probability_outputs([item.id for item in inputs])
         evaluations = await self._repository.latest_evaluations([item.id for item in inputs])
         quality = _calibration_quality(evaluations, inputs)
-        grouped: dict[tuple[object, str, str], list[object]] = {}
+        grouped: dict[tuple[UUID, str, str], list[ProbabilityOutput]] = {}
         for output in outputs:
             grouped.setdefault((output.fixture_id, output.market_type, output.outcome), []).append(
                 output
@@ -147,10 +151,10 @@ class ConsensusService:
 
 def _output(
     run: ConsensusRun,
-    key: tuple[object, str, str],
-    outputs: list[object],
+    key: tuple[UUID, str, str],
+    outputs: Sequence[ProbabilityOutput],
     expected: int,
-    strategy: object,
+    strategy: ConsensusStrategyEngine,
     parameters: dict[str, object],
     quality: float,
 ) -> ConsensusOutput:
@@ -179,12 +183,17 @@ def _output(
     )
 
 
-def _calibration_quality(evaluations: list[object], inputs: list[object]) -> float:
-    latest: dict[object, object] = {}
+def _calibration_quality(
+    evaluations: Sequence[ProbabilityEvaluation], inputs: Sequence[ProbabilityRun]
+) -> float:
+    latest: dict[UUID, ProbabilityEvaluation] = {}
     for evaluation in evaluations:
         latest.setdefault(evaluation.probability_run_id, evaluation)
     qualities = [
-        max(0.0, 1 - float(latest[item.id].metrics.get("brier_score", 0.5)))
+        max(
+            0.0,
+            1 - float(cast(str | float, latest[item.id].metrics.get("brier_score", 0.5))),
+        )
         if item.id in latest
         else 0.5
         for item in inputs

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import cast
 
 from app.modules.feature_store.enums import FeatureDataType, FeatureType, MissingValuePolicy
 from app.modules.feature_store.generator import (
@@ -68,19 +69,24 @@ class MarketSummaryGenerator:
             ),
         )
 
-    async def generate(self, context: object) -> list[object]:
-        assert isinstance(context, FeatureGenerationContext)
+    async def generate(self, context: FeatureGenerationContext) -> list[GeneratedFeature]:
         snapshots = await context.source_reader.latest_odds(
             fixture_id=context.fixture.fixture_id, as_of=context.as_of
         )
-        probabilities = [Decimal(str(item.implied_probability)) for item in snapshots]
-        mean = sum(probabilities, Decimal("0")) / len(probabilities) if probabilities else None
+        probabilities: list[Decimal] = [
+            Decimal(str(item.implied_probability)) for item in snapshots
+        ]
+        mean = (
+            cast(Decimal, sum(probabilities, Decimal("0")) / len(probabilities))
+            if probabilities
+            else None
+        )
         variance = (
             sum((value - mean) ** 2 for value in probabilities) / len(probabilities)
             if mean is not None
             else None
         )
-        volatility = variance.sqrt() if variance is not None else None
+        volatility = cast(Decimal, variance).sqrt() if variance is not None else None
         sources = tuple(
             SourceReference(
                 "market_data",

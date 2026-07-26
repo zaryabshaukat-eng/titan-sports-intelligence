@@ -1,7 +1,8 @@
 import hashlib
 import json
 
-from app.modules.explainability.models import ExplainabilityLineage
+from app.modules.explainability.models import ExplainabilityLineage, ExplainabilityRun
+from app.modules.probability.models import ProbabilityRun
 
 
 def fingerprint(value: object) -> str:
@@ -10,7 +11,7 @@ def fingerprint(value: object) -> str:
     ).hexdigest()
 
 
-def build(run: object, probability: object) -> ExplainabilityLineage:
+def build(run: ExplainabilityRun, probability: ProbabilityRun) -> ExplainabilityLineage:
     return ExplainabilityLineage(
         explainability_run_id=run.id,
         probability_run_id=run.probability_run_id,

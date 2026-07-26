@@ -21,6 +21,7 @@ from app.modules.evaluation_monitoring.models import (
     ModelHealth,
     ProviderHealth,
     QualityMetric,
+    RunArtifact,
     ValidationRecord,
 )
 from app.modules.evaluation_monitoring.registry import MonitoringAnalyzerRegistry
@@ -120,7 +121,7 @@ class MonitoringService:
             else current
         )
         baseline = normalize(baseline_values) or current
-        results = []
+        results: list[RunArtifact] = []
         for analyzer in self.registry.analyzers():
             value = float(analyzer.calculate(baseline, current))
             results.extend(

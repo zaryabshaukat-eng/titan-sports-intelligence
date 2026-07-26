@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.modules.evaluation_monitoring.analyzers.distribution import js, kl, psi, wasserstein
@@ -7,7 +8,7 @@ from app.modules.evaluation_monitoring.analyzers.distribution import js, kl, psi
 class Analyzer:
     identifier: str
     description: str
-    calculate: object
+    calculate: Callable[[list[float], list[float]], float]
 
 
 class MonitoringAnalyzerRegistry:

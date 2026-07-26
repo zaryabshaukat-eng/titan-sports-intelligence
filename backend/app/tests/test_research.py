@@ -6,6 +6,7 @@ import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -44,7 +45,7 @@ def test_statistical_primitives_are_deterministic_and_descriptive() -> None:
     )
 
     assert summary.values["mean"] == 2.0
-    assert sum(item["count"] for item in histogram.values["bins"]) == 3
+    assert sum(item["count"] for item in cast(list[dict[str, int]], histogram.values["bins"])) == 3
     assert related.values["coefficient"] == 1.0
     assert significance.p_value is not None
     assert 0 <= significance.p_value <= 1
@@ -114,22 +115,22 @@ def test_research_service_materializes_frozen_datasets_and_reuses_exact_retries(
 
     class _Session:
         def __init__(self) -> None:
-            self.added: list[object] = []
+            self.added: list[Any] = []
 
-        def add(self, item: object) -> None:
+        def add(self, item: Any) -> None:
             self.added.append(item)
 
-        def add_all(self, items: list[object]) -> None:
+        def add_all(self, items: list[Any]) -> None:
             self.added.extend(items)
 
     class _Repository:
         def __init__(self, session: _Session) -> None:
             self._session = session
-            self._datasets_by_key: dict[str, object] = {}
-            self._datasets_by_id: dict[object, object] = {}
-            self._datasets_by_version: dict[tuple[str, str], object] = {}
-            self._experiments_by_key: dict[str, object] = {}
-            self._experiments_by_code: dict[str, object] = {}
+            self._datasets_by_key: dict[str, Any] = {}
+            self._datasets_by_id: dict[object, Any] = {}
+            self._datasets_by_version: dict[tuple[str, str], Any] = {}
+            self._experiments_by_key: dict[str, Any] = {}
+            self._experiments_by_code: dict[str, Any] = {}
 
         async def feature_set_version(self, version_id: object) -> object | None:
             return (
@@ -147,7 +148,7 @@ def test_research_service_materializes_frozen_datasets_and_reuses_exact_retries(
         async def dataset_by_code_version(self, code: str, version: str) -> object | None:
             return self._datasets_by_version.get((code, version))
 
-        async def create_dataset(self, dataset: object) -> object:
+        async def create_dataset(self, dataset: Any) -> Any:
             dataset.id = uuid4()
             self._session.add(dataset)
             self._datasets_by_key[dataset.idempotency_key] = dataset
@@ -171,7 +172,7 @@ def test_research_service_materializes_frozen_datasets_and_reuses_exact_retries(
         async def experiment_by_code(self, code: str) -> object | None:
             return self._experiments_by_code.get(code)
 
-        async def create_experiment(self, experiment: object) -> object:
+        async def create_experiment(self, experiment: Any) -> Any:
             experiment.id = uuid4()
             self._session.add(experiment)
             self._experiments_by_key[experiment.idempotency_key] = experiment

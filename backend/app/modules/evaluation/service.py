@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.evaluation.backtest import no_future_leakage
@@ -14,6 +16,7 @@ from app.modules.evaluation.registry import ScenarioRegistry
 from app.modules.evaluation.repositories import EvaluationRepository
 from app.modules.evaluation.schemas import BacktestRunCreate
 from app.modules.evaluation.validation import validate, validate_scenario_parameters
+from app.modules.probability.models import ProbabilityOutput
 
 
 class BacktestService:
@@ -27,7 +30,7 @@ class BacktestService:
         con = await self._repository.consensus(request.consensus_run_id)
         risk = await self._repository.risk(request.risk_run_id)
         explain = await self._repository.explainability(request.explainability_run_id)
-        if not all((prob, con, risk, explain)):
+        if prob is None or con is None or risk is None or explain is None:
             raise ValueError("All pipeline artifacts are required.")
         checksum = fingerprint(
             {
@@ -59,12 +62,15 @@ class BacktestService:
         fixtures = await self._repository.fixtures(
             [item.fixture_id for item in output_map.values()]
         )
-        replayed = []
+        replayed: list[tuple[ProbabilityOutput, bool, datetime]] = []
         leakage = False
         for outcome in request.outcomes:
             output = output_map.get(outcome.probability_output_id)
-            fixture = fixtures.get(output.fixture_id) if output else None
-            if not fixture or not no_future_leakage(
+            if output is None:
+                leakage = True
+                continue
+            fixture = fixtures.get(output.fixture_id)
+            if fixture is None or not no_future_leakage(
                 output.prediction_timestamp, fixture.scheduled_start_at
             ):
                 leakage = True

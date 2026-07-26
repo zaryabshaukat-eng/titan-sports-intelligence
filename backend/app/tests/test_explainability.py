@@ -1,20 +1,25 @@
 """Deterministic contribution and reasoning coverage for Explainability."""
 
+from dataclasses import dataclass
 from decimal import Decimal
-from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.modules.explainability.confidence import scores
 from app.modules.explainability.feature_importance import deterministic
 from app.modules.explainability.reasoning import chain
 
 
+@dataclass(frozen=True)
+class FeatureRow:
+    feature_id: str
+    numeric_value: Decimal | None
+    source_feature_value_id: UUID
+
+
 def test_deterministic_contributions_reasoning_and_confidence_are_reproducible() -> None:
     rows = [
-        SimpleNamespace(
-            feature_id="shots", numeric_value=Decimal("3"), source_feature_value_id=uuid4()
-        ),
-        SimpleNamespace(
+        FeatureRow(feature_id="shots", numeric_value=Decimal("3"), source_feature_value_id=uuid4()),
+        FeatureRow(
             feature_id="fouls", numeric_value=Decimal("-1"), source_feature_value_id=uuid4()
         ),
     ]

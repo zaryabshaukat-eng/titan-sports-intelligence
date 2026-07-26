@@ -14,6 +14,7 @@ from app.modules.evaluation_monitoring.models import (
     LineageRecord,
     ModelHealth,
     ProviderHealth,
+    RunArtifact,
     ValidationRecord,
 )
 from app.modules.evaluation_monitoring.schemas import (
@@ -56,7 +57,7 @@ async def detail(id: UUID, s: S, p: R) -> RunRead:
     return RunRead.model_validate(value)
 
 
-async def _items(model: object, id: UUID, s: AsyncSession):
+async def _items(model: type[RunArtifact], id: UUID, s: AsyncSession) -> list[RunArtifact]:
     return await MonitoringApiFacade(s).items(model, id)
 
 

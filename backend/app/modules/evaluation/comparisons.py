@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 
@@ -14,7 +15,7 @@ def compare(
     evidence, while future governance or policy layers decide what is acceptable.
     """
     deltas = {
-        name: float(candidate[name]) - float(baseline[name])
+        name: float(cast(int | float, candidate[name])) - float(cast(int | float, baseline[name]))
         for name in sorted(set(baseline).intersection(candidate))
         if isinstance(baseline[name], (int, float))
         and not isinstance(baseline[name], bool)

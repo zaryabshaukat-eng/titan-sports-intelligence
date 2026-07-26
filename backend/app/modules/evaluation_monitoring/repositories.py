@@ -8,6 +8,7 @@ from app.modules.evaluation_monitoring.models import (
     EvaluationConfiguration,
     EvaluationRun,
     ModelHealth,
+    RunArtifact,
 )
 from app.modules.probability.models import ProbabilityRun
 
@@ -73,7 +74,7 @@ class MonitoringRepository:
     async def flush(self) -> None:
         await self.s.flush()
 
-    async def list_for(self, model: object, run_id: UUID) -> list[object]:
+    async def list_for(self, model: type[RunArtifact], run_id: UUID) -> list[RunArtifact]:
         return list(
             (await self.s.scalars(select(model).where(model.evaluation_run_id == run_id))).all()
         )

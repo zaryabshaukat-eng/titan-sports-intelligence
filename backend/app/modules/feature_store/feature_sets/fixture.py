@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
+from uuid import UUID
 
 from app.modules.feature_store.enums import FeatureDataType, FeatureType, MissingValuePolicy
 from app.modules.feature_store.generator import (
@@ -12,6 +14,7 @@ from app.modules.feature_store.generator import (
 )
 from app.modules.feature_store.metadata import fingerprint
 from app.modules.feature_store.registry import FeatureSpec
+from app.modules.statistics.models import StatisticSnapshot
 
 
 def _number(value: object) -> Decimal | None:
@@ -24,8 +27,8 @@ def _number(value: object) -> Decimal | None:
     return None
 
 
-def _metric(snapshot: object, *keys: str) -> Decimal | None:
-    values = getattr(snapshot, "values", {})
+def _metric(snapshot: StatisticSnapshot, *keys: str) -> Decimal | None:
+    values = snapshot.values
     if not isinstance(values, dict):
         return None
     for key in keys:
@@ -116,17 +119,16 @@ class FixtureStatisticsGenerator:
             ),
         )
 
-    async def generate(self, context: object) -> list[object]:
-        assert isinstance(context, FeatureGenerationContext)
+    async def generate(self, context: FeatureGenerationContext) -> list[GeneratedFeature]:
         snapshots = await context.source_reader.statistic_history(
             fixture_id=context.fixture.fixture_id, as_of=context.as_of
         )
-        latest_by_series: dict[object, object] = {}
+        latest_by_series: dict[UUID, StatisticSnapshot] = {}
         for snapshot in snapshots:
             latest_by_series.setdefault(snapshot.series_id, snapshot)
         latest = list(latest_by_series.values())
 
-        def sources(rows: list[object]) -> tuple[SourceReference, ...]:
+        def sources(rows: Sequence[StatisticSnapshot]) -> tuple[SourceReference, ...]:
             return tuple(
                 SourceReference(
                     "statistics",

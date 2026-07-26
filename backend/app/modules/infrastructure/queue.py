@@ -16,7 +16,7 @@ class Job:
 
 
 class InMemoryQueue:
-    def __init__(self):
+    def __init__(self) -> None:
         self.jobs: dict[str, Job] = {}
         self.keys: set[str] = set()
 
@@ -48,10 +48,10 @@ class InMemoryQueue:
                 return job
         return None
 
-    async def complete(self, job: Job):
+    async def complete(self, job: Job) -> None:
         job.status = "completed"
 
-    async def fail(self, job: Job, max_attempts: int, delay: float):
+    async def fail(self, job: Job, max_attempts: int, delay: float) -> None:
         job.attempts += 1
         job.status = "dead_letter" if job.attempts >= max_attempts else "queued"
         job.available_at = datetime.now(UTC) + timedelta(seconds=delay)

@@ -6,12 +6,14 @@ import hashlib
 import json
 from collections.abc import Iterable
 from dataclasses import asdict, is_dataclass
+from typing import Any, cast
 
 
 def canonical_json(value: object) -> str:
     """Serialize configuration with stable ordering for reproducible fingerprints."""
     if is_dataclass(value):
-        value = asdict(value)
+        # is_dataclass also accepts dataclass classes, while asdict accepts instances only.
+        value = asdict(cast(Any, value))
     return json.dumps(value, default=str, sort_keys=True, separators=(",", ":"))
 
 

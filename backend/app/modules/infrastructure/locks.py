@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from app.shared.redis import RedisClient
+
 
 class DistributedLock:
-    def __init__(self, redis: object, name: str, lease_seconds: int):
+    """Best-effort Redis lock retaining the established fail-closed semantics."""
+
+    def __init__(self, redis: RedisClient, name: str, lease_seconds: int) -> None:
         self.redis, self.name, self.token, self.lease = (
             redis,
             f"titan:lock:{name}",

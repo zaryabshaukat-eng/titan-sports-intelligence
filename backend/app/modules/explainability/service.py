@@ -93,9 +93,9 @@ class ExplainabilityService:
             for item in await self._repository.consensus_outputs(consensus.id)
         }
         for risk_output in await self._repository.risk_outputs(risk.id):
-            key = (risk_output.fixture_id, risk_output.market_type, risk_output.outcome)
-            probability_output = probability_outputs.get(key)
-            consensus_output = consensus_outputs.get(key)
+            output_key = (risk_output.fixture_id, risk_output.market_type, risk_output.outcome)
+            probability_output = probability_outputs.get(output_key)
+            consensus_output = consensus_outputs.get(output_key)
             if not probability_output or not consensus_output:
                 continue
             rows = await self._repository.feature_rows(

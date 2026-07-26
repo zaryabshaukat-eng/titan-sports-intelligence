@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,7 +79,7 @@ class RiskService:
         if not valid:
             return run
         analyzers = {item.metadata.identifier: item for item in self._registry.analyzers()}
-        results = []
+        results: list[RiskOutput] = []
         for output in outputs:
             context = RiskContext(
                 float(output.consensus_probability),
@@ -86,7 +87,7 @@ class RiskService:
                 output.disagreement_metrics,
                 output.contributor_count,
                 output.expected_count,
-                float(output.confidence_metrics.get("calibration_quality", 0.5)),
+                float(cast(str | float, output.confidence_metrics.get("calibration_quality", 0.5))),
             )
             values = {
                 name: analyzer.assess(context, request.parameters)

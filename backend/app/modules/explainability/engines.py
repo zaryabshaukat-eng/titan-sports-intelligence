@@ -1,6 +1,11 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from app.modules.explainability.feature_importance import Contribution, deterministic
+from app.modules.explainability.feature_importance import (
+    Contribution,
+    FeatureImportanceRow,
+    deterministic,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,5 +20,5 @@ class DeterministicFeatureExplainer:
         "Normalizes immutable numeric feature magnitude into provider-neutral contribution shares.",
     )
 
-    def explain(self, rows: list[object]) -> list[Contribution]:
+    def explain(self, rows: Sequence[FeatureImportanceRow]) -> list[Contribution]:
         return deterministic(rows)

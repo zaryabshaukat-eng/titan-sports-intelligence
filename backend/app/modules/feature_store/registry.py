@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.modules.feature_store.enums import FeatureDataType, FeatureType, MissingValuePolicy
+from app.modules.feature_store.generator import FeatureGenerationContext, GeneratedFeature
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +36,7 @@ class FeatureGenerator(Protocol):
     @property
     def specs(self) -> tuple[FeatureSpec, ...]: ...
 
-    async def generate(self, context: object) -> list[object]: ...
+    async def generate(self, context: FeatureGenerationContext) -> list[GeneratedFeature]: ...
 
 
 class FeatureGeneratorRegistry:

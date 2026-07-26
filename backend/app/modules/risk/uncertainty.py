@@ -1,4 +1,5 @@
 from math import log2
+from typing import cast
 
 from app.modules.risk.engines import AnalyzerMetadata, RiskContext
 
@@ -12,5 +13,12 @@ class UncertaintyAnalyzer:
         entropy = -((p * log2(p)) + ((1 - p) * log2(1 - p)))
         return min(
             1.0,
-            (entropy + float(context.disagreement_metrics.get("standard_deviation", 0)) * 2) / 2,
+            (
+                entropy
+                + float(
+                    cast(str | float, context.disagreement_metrics.get("standard_deviation", 0))
+                )
+                * 2
+            )
+            / 2,
         )

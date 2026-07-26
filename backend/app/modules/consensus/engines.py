@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from statistics import median
-from typing import Protocol
+from typing import Protocol, cast
 from uuid import UUID
 
 
@@ -49,7 +49,10 @@ class WeightedAverage:
         raw = parameters.get("weights", {})
         if not isinstance(raw, dict):
             raise ValueError("parameters.weights must be an object")
-        weights = [float(raw.get(str(item.probability_run_id), 1.0)) for item in estimates]
+        weights = [
+            float(cast(str | float, raw.get(str(item.probability_run_id), 1.0)))
+            for item in estimates
+        ]
         if any(weight <= 0 for weight in weights):
             raise ValueError("Consensus weights must be positive")
         return sum(
@@ -74,7 +77,7 @@ class TrimmedMean:
 
     def combine(self, estimates: list[ConsensusEstimate], parameters: dict[str, object]) -> float:
         values = sorted(_values(estimates))
-        fraction = float(parameters.get("trim_fraction", 0.1))
+        fraction = float(cast(str | float, parameters.get("trim_fraction", 0.1)))
         if not 0 <= fraction < 0.5:
             raise ValueError("parameters.trim_fraction must be in [0, 0.5)")
         trim = int(len(values) * fraction)
@@ -91,7 +94,7 @@ class MajorityVoting:
 
     def combine(self, estimates: list[ConsensusEstimate], parameters: dict[str, object]) -> float:
         values = _values(estimates)
-        threshold = float(parameters.get("threshold", 0.5))
+        threshold = float(cast(str | float, parameters.get("threshold", 0.5)))
         if not 0 <= threshold <= 1:
             raise ValueError("parameters.threshold must be in [0, 1]")
         return sum(value >= threshold for value in values) / len(values)
@@ -106,7 +109,8 @@ class BayesianPooling:
 
     def combine(self, estimates: list[ConsensusEstimate], parameters: dict[str, object]) -> float:
         values = _values(estimates)
-        alpha, beta = float(parameters.get("alpha", 1)), float(parameters.get("beta", 1))
+        alpha = float(cast(str | float, parameters.get("alpha", 1)))
+        beta = float(cast(str | float, parameters.get("beta", 1)))
         if alpha <= 0 or beta <= 0:
             raise ValueError("Bayesian pooling alpha and beta must be positive")
         return (alpha + sum(values)) / (alpha + beta + len(values))

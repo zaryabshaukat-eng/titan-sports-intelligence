@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 from math import log
+from typing import TypedDict
+
+
+class ReliabilityBin(TypedDict):
+    """One deterministic calibration bucket with stable numeric fields."""
+
+    lower: float
+    upper: float
+    count: int
+    mean_probability: float
+    observed_rate: float
+
+
+type ProbabilityMetrics = dict[str, float | None]
 
 
 def evaluate(
     samples: list[tuple[float, bool]], *, bins: int
-) -> tuple[dict[str, object], list[dict[str, object]]]:
+) -> tuple[ProbabilityMetrics, list[ReliabilityBin]]:
     """Calculate reproducible proper scores, discrimination metrics, sharpness, and reliability."""
     if not samples:
         raise ValueError("At least one evaluation sample is required")
@@ -26,7 +40,7 @@ def evaluate(
         item["count"] * abs(float(item["mean_probability"]) - float(item["observed_rate"]))
         for item in reliability
     ) / len(samples)
-    metrics: dict[str, object] = {
+    metrics: ProbabilityMetrics = {
         "brier_score": brier,
         "log_loss": log_loss,
         "calibration_error": calibration_error,
@@ -38,12 +52,12 @@ def evaluate(
     return metrics, reliability
 
 
-def reliability_curve(samples: list[tuple[float, bool]], *, bins: int) -> list[dict[str, object]]:
+def reliability_curve(samples: list[tuple[float, bool]], *, bins: int) -> list[ReliabilityBin]:
     """Return stable equal-width reliability buckets, omitting empty buckets."""
     grouped: list[list[tuple[float, bool]]] = [[] for _ in range(bins)]
     for probability, outcome in samples:
         grouped[min(int(probability * bins), bins - 1)].append((probability, outcome))
-    values: list[dict[str, object]] = []
+    values: list[ReliabilityBin] = []
     for index, group in enumerate(grouped):
         if not group:
             continue

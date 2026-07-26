@@ -1,6 +1,11 @@
 from dataclasses import dataclass
+from uuid import UUID
 
+from app.modules.consensus.models import ConsensusRun
 from app.modules.evaluation.enums import BacktestValidationStatus, ScenarioType
+from app.modules.explainability.models import ExplainabilityRun
+from app.modules.probability.models import ProbabilityRun
+from app.modules.risk.models import RiskRun
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,11 +30,11 @@ def validate_scenario_parameters(scenario: ScenarioType, parameters: dict[str, o
 
 
 def validate(
-    prob: object,
-    consensus: object,
-    risk: object,
-    explain: object,
-    requested_research_experiment_id: object,
+    prob: ProbabilityRun,
+    consensus: ConsensusRun,
+    risk: RiskRun,
+    explain: ExplainabilityRun,
+    requested_research_experiment_id: UUID,
     leakage: bool,
 ) -> tuple[Finding, ...]:
     same = (

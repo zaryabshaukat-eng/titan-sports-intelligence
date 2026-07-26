@@ -1,9 +1,22 @@
+from collections.abc import Sequence
+from decimal import Decimal
 from math import sqrt
+from typing import Protocol
 
 from app.modules.probability.evaluation import evaluate
 
 
-def calculate(rows: list[object]) -> tuple[dict[str, object], list[dict[str, object]]]:
+class EvaluationRow(Protocol):
+    """The immutable replay fields required for deterministic evaluation."""
+
+    @property
+    def predicted_probability(self) -> Decimal: ...
+
+    @property
+    def observed_outcome(self) -> bool: ...
+
+
+def calculate(rows: Sequence[EvaluationRow]) -> tuple[dict[str, object], list[dict[str, object]]]:
     """Calculate immutable replay metrics without depending on live state.
 
     The shared probability evaluator supplies the proper scores and calibration
@@ -24,4 +37,4 @@ def calculate(rows: list[object]) -> tuple[dict[str, object], list[dict[str, obj
             "prediction_stability": max(0.0, 1.0 - (sqrt(variance) / 0.5)),
         }
     )
-    return metrics, reliability
+    return dict(metrics), [dict(item) for item in reliability]

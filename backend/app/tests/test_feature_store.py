@@ -6,10 +6,12 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.feature_store.enums import (
     FeatureDataType,
@@ -26,10 +28,22 @@ from app.modules.feature_store.generator import (
     SourceReference,
 )
 from app.modules.feature_store.metadata import feature_set_checksum, fingerprint
-from app.modules.feature_store.models import FeatureValue
-from app.modules.feature_store.registry import FeatureSpec, build_default_registry
+from app.modules.feature_store.models import (
+    FeatureDefinition,
+    FeatureGenerationRun,
+    FeatureLineage,
+    FeatureSet,
+    FeatureSetVersion,
+    FeatureValidationRecord,
+    FeatureValue,
+)
+from app.modules.feature_store.registry import (
+    FeatureGeneratorRegistry,
+    FeatureSpec,
+    build_default_registry,
+)
 from app.modules.feature_store.repositories import FeatureStoreRepository
-from app.modules.feature_store.schemas import FeatureValueFilters
+from app.modules.feature_store.schemas import FeatureGenerationRequest, FeatureValueFilters
 from app.modules.feature_store.service import FeatureGenerationService
 from app.modules.feature_store.validation import validate_feature
 
@@ -189,12 +203,22 @@ def test_generation_service_reuses_identical_historical_inputs_with_lineage_and_
 
     class _Session:
         def __init__(self) -> None:
-            self.added: list[object] = []
+            self.added: list[
+                FeatureGenerationRun | FeatureLineage | FeatureValidationRecord | FeatureValue
+            ] = []
 
-        def add(self, item: object) -> None:
+        def add(
+            self,
+            item: FeatureGenerationRun | FeatureLineage | FeatureValidationRecord | FeatureValue,
+        ) -> None:
             self.added.append(item)
 
-        def add_all(self, items: list[object]) -> None:
+        def add_all(
+            self,
+            items: list[
+                FeatureGenerationRun | FeatureLineage | FeatureValidationRecord | FeatureValue
+            ],
+        ) -> None:
             self.added.extend(items)
 
         async def flush(self) -> None:
@@ -205,23 +229,24 @@ def test_generation_service_reuses_identical_historical_inputs_with_lineage_and_
     class _Repository:
         def __init__(self, session: _Session) -> None:
             self._session = session
-            self._runs: dict[str, object] = {}
-            self._set_version = SimpleNamespace(id=uuid4())
-            self._definitions = {"test_metric": SimpleNamespace(id=uuid4())}
+            self._runs: dict[str, FeatureGenerationRun] = {}
+            self._feature_set = FeatureSet(id=uuid4())
+            self._set_version = FeatureSetVersion(id=uuid4())
+            self._definitions = {"test_metric": FeatureDefinition(id=uuid4())}
 
         async def ensure_feature_set_version(
             self, **_: object
-        ) -> tuple[object, object, dict[str, object]]:
+        ) -> tuple[FeatureSet, FeatureSetVersion, dict[str, FeatureDefinition]]:
             return (
-                SimpleNamespace(),
+                self._feature_set,
                 self._set_version,
                 self._definitions,
             )
 
-        async def existing_run(self, idempotency_key: str) -> object | None:
+        async def existing_run(self, idempotency_key: str) -> FeatureGenerationRun | None:
             return self._runs.get(idempotency_key)
 
-        async def create_run(self, run: object) -> object:
+        async def create_run(self, run: FeatureGenerationRun) -> FeatureGenerationRun:
             run.id = uuid4()
             self._runs[run.idempotency_key] = run
             return run
@@ -231,10 +256,10 @@ def test_generation_service_reuses_identical_historical_inputs_with_lineage_and_
         generator_version = "1.0.0"
 
         @property
-        def specs(self) -> tuple[object, ...]:
+        def specs(self) -> tuple[FeatureSpec, ...]:
             return (spec,)
 
-        async def generate(self, context: object) -> list[object]:
+        async def generate(self, context: FeatureGenerationContext) -> list[GeneratedFeature]:
             _ = context
             return [
                 GeneratedFeature(
@@ -246,12 +271,8 @@ def test_generation_service_reuses_identical_historical_inputs_with_lineage_and_
                 )
             ]
 
-    class _Registry:
-        generators = (_Generator(),)
-        specs = _Generator().specs
-
     class _Reader:
-        def __init__(self, session: object) -> None:
+        def __init__(self, session: AsyncSession) -> None:
             _ = session
 
         async def fixture_context(self, fixture_id: object) -> FixtureContext:
@@ -260,9 +281,11 @@ def test_generation_service_reuses_identical_historical_inputs_with_lineage_and_
 
     async def run() -> None:
         session = _Session()
-        service = FeatureGenerationService(session, _Registry())  # type: ignore[arg-type]
-        service._repository = _Repository(session)  # type: ignore[assignment]
-        request = SimpleNamespace(
+        registry = FeatureGeneratorRegistry()
+        registry.register(_Generator())
+        service = FeatureGenerationService(cast(AsyncSession, session), registry)
+        service._repository = cast(FeatureStoreRepository, _Repository(session))
+        request = FeatureGenerationRequest(
             feature_set_code="core_fixture",
             feature_set_version="1.0.0",
             fixture_id=fixture.fixture_id,

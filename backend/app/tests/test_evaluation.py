@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -14,6 +16,12 @@ from app.modules.evaluation.schemas import BacktestRunCreate, HistoricalOutcome
 from app.modules.evaluation.validation import validate_scenario_parameters
 
 
+@dataclass(frozen=True)
+class EvaluationRow:
+    predicted_probability: Decimal
+    observed_outcome: bool
+
+
 def test_historical_scenarios_metrics_and_leakage_are_deterministic() -> None:
     now = datetime(2026, 1, 1, tzinfo=UTC)
     items = [SimpleNamespace(fixture_start_at=now + timedelta(days=index)) for index in range(5)]
@@ -23,14 +31,17 @@ def test_historical_scenarios_metrics_and_leakage_are_deterministic() -> None:
     assert no_future_leakage(now, now) and not no_future_leakage(now + timedelta(seconds=1), now)
     metrics, reliability = calculate(
         [
-            SimpleNamespace(predicted_probability=Decimal("0.8"), observed_outcome=True),
-            SimpleNamespace(predicted_probability=Decimal("0.2"), observed_outcome=False),
+            EvaluationRow(predicted_probability=Decimal("0.8"), observed_outcome=True),
+            EvaluationRow(predicted_probability=Decimal("0.2"), observed_outcome=False),
         ]
     )
-    assert metrics["brier_score"] < 0.1 and sum(item["count"] for item in reliability) == 2
+    brier_score = metrics["brier_score"]
+    stability = metrics["prediction_stability"]
+    assert isinstance(brier_score, float) and brier_score < 0.1
+    assert sum(cast(int, item["count"]) for item in reliability) == 2
     assert metrics["accuracy"] == 1.0
     assert metrics["coverage"] == 1.0
-    assert metrics["prediction_stability"] > 0.0
+    assert isinstance(stability, float) and stability > 0.0
 
 
 def test_replay_input_rejects_duplicates_and_invalid_scenario_parameters() -> None:

@@ -323,7 +323,7 @@ class FixtureIngestionService:
             )
             identity_created = True
 
-        changes = (
+        changes: dict[str, Any] = (
             {}
             if fixture_created
             else self._apply_mutable_fixture_changes(fixture, normalized, references)

@@ -4,8 +4,12 @@ from app.modules.infrastructure.monitoring import metrics
 
 
 class LocalRateLimiter:
-    def __init__(self, limit: int, window_seconds: float = 60):
-        self.limit, self.window, self.values = limit, window_seconds, {}
+    """In-process sliding-window limiter with explicit internal state typing."""
+
+    def __init__(self, limit: int, window_seconds: float = 60) -> None:
+        self.limit = limit
+        self.window = window_seconds
+        self.values: dict[str, list[float]] = {}
 
     def allow(self, key: str) -> bool:
         now = monotonic()

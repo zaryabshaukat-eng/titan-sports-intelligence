@@ -2,6 +2,8 @@ from app.modules.evaluation.scenarios import (
     ExpandingWindow,
     HistoricalReplay,
     RollingWindow,
+    Scenario,
+    ScenarioMetadata,
     TimeSplit,
     WalkForward,
 )
@@ -9,7 +11,7 @@ from app.modules.evaluation.scenarios import (
 
 class ScenarioRegistry:
     def __init__(self) -> None:
-        self._items = {
+        self._items: dict[str, Scenario] = {
             item.metadata.identifier: item
             for item in (
                 HistoricalReplay(),
@@ -20,8 +22,8 @@ class ScenarioRegistry:
             )
         }
 
-    def resolve(self, id: str):
+    def resolve(self, id: str) -> Scenario:
         return self._items[id]
 
-    def metadata(self):
+    def metadata(self) -> list[ScenarioMetadata]:
         return [self._items[k].metadata for k in sorted(self._items)]

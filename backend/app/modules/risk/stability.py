@@ -1,3 +1,5 @@
+from typing import cast
+
 from app.modules.risk.engines import AnalyzerMetadata, RiskContext
 
 
@@ -8,4 +10,10 @@ class StabilityAnalyzer:
 
     def assess(self, context: RiskContext, parameters: dict[str, object]) -> float:
         _ = parameters
-        return min(1.0, float(context.disagreement_metrics.get("mean_pairwise_divergence", 0)) * 2)
+        return min(
+            1.0,
+            float(
+                cast(str | float, context.disagreement_metrics.get("mean_pairwise_divergence", 0))
+            )
+            * 2,
+        )

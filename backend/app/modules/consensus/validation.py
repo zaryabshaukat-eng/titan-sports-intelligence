@@ -1,9 +1,11 @@
 """Compatibility validation for immutable consensus inputs."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.modules.consensus.enums import ConsensusValidationStatus
 from app.modules.probability.enums import ProbabilityRunStatus
+from app.modules.probability.models import ProbabilityRun
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,7 +16,7 @@ class ValidationFinding:
 
 
 def validate(
-    *, inputs: list[object], expected_count: int, strategy_valid: bool
+    *, inputs: Sequence[ProbabilityRun], expected_count: int, strategy_valid: bool
 ) -> tuple[ValidationFinding, ...]:
     same_dataset = bool(inputs) and len({item.dataset_snapshot_id for item in inputs}) == 1
     same_features = bool(inputs) and len({item.feature_set_version_id for item in inputs}) == 1

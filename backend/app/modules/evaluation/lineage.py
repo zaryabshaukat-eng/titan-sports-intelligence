@@ -1,7 +1,8 @@
 import hashlib
 import json
 
-from app.modules.evaluation.models import BacktestLineage
+from app.modules.evaluation.models import BacktestLineage, BacktestRun
+from app.modules.probability.models import ProbabilityRun
 
 
 def fingerprint(v: object) -> str:
@@ -10,7 +11,7 @@ def fingerprint(v: object) -> str:
     ).hexdigest()
 
 
-def build(run: object, probability_run: object) -> BacktestLineage:
+def build(run: BacktestRun, probability_run: ProbabilityRun) -> BacktestLineage:
     """Capture direct and indirect Probability lineage in immutable evidence."""
     artifact_ids = {
         "research_experiment_id": str(run.research_experiment_id),

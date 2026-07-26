@@ -2,9 +2,11 @@
 
 import hashlib
 import json
+from collections.abc import Sequence
 from uuid import UUID
 
 from app.modules.consensus.models import ConsensusLineage
+from app.modules.probability.models import ProbabilityRun
 
 
 def fingerprint(value: object) -> str:
@@ -17,7 +19,7 @@ def build_lineage(
     run_id: UUID,
     feature_set_version_id: UUID,
     dataset_snapshot_id: UUID,
-    inputs: list[object],
+    inputs: Sequence[ProbabilityRun],
     parameters: dict[str, object],
     random_seed: int,
 ) -> ConsensusLineage:

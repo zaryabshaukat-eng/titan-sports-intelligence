@@ -4,12 +4,15 @@ import json
 from typing import TypeVar
 
 from app.modules.infrastructure.monitoring import metrics
+from app.shared.redis import RedisClient
 
 T = TypeVar("T")
 
 
 class Cache:
-    def __init__(self, redis: object, namespace: str = "titan"):
+    """Best-effort JSON cache retaining the established safe Redis fallback."""
+
+    def __init__(self, redis: RedisClient, namespace: str = "titan") -> None:
         self.redis = redis
         self.namespace = namespace
 

@@ -2,6 +2,7 @@ import hashlib
 import json
 from uuid import UUID
 
+from app.modules.consensus.models import ConsensusRun
 from app.modules.risk.models import RiskLineage
 
 
@@ -14,7 +15,7 @@ def fingerprint(value: object) -> str:
 def build(
     *,
     risk_run_id: UUID,
-    consensus: object,
+    consensus: ConsensusRun,
     probability_run_ids: list[str],
     parameters: dict[str, object],
     seed: int,

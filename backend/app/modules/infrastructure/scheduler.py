@@ -14,13 +14,15 @@ class Schedule:
 
 
 class Scheduler:
-    def __init__(self):
+    def __init__(self) -> None:
         self.items: list[Schedule] = []
 
-    def register(self, name: str, interval_seconds: int, task: Callable[[], Awaitable[None]]):
+    def register(
+        self, name: str, interval_seconds: int, task: Callable[[], Awaitable[None]]
+    ) -> None:
         self.items.append(Schedule(name, interval_seconds, task, datetime.now(UTC)))
 
-    async def tick(self):
+    async def tick(self) -> None:
         now = datetime.now(UTC)
         for item in self.items:
             if item.next_at <= now:

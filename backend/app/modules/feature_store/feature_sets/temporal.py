@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 
 from app.modules.feature_store.enums import FeatureDataType, FeatureType, MissingValuePolicy
@@ -12,6 +13,7 @@ from app.modules.feature_store.generator import (
 )
 from app.modules.feature_store.metadata import fingerprint
 from app.modules.feature_store.registry import FeatureSpec
+from app.modules.sports.models import Fixture
 
 
 class TemporalFeatureGenerator:
@@ -79,8 +81,7 @@ class TemporalFeatureGenerator:
             ),
         )
 
-    async def generate(self, context: object) -> list[object]:
-        assert isinstance(context, FeatureGenerationContext)
+    async def generate(self, context: FeatureGenerationContext) -> list[GeneratedFeature]:
         fixture = context.fixture
         home_any = await context.source_reader.previous_team_fixtures(
             team_id=fixture.home_team_id, as_of=context.as_of, limit=1
@@ -95,7 +96,7 @@ class TemporalFeatureGenerator:
             team_id=fixture.away_team_id, as_of=context.as_of, home_only=False, limit=5
         )
 
-        def refs(rows: list[object]) -> tuple[SourceReference, ...]:
+        def refs(rows: Sequence[Fixture]) -> tuple[SourceReference, ...]:
             return tuple(
                 SourceReference(
                     "sports",
@@ -107,7 +108,7 @@ class TemporalFeatureGenerator:
                 for row in rows
             )
 
-        def rest(rows: list[object]) -> Decimal | None:
+        def rest(rows: Sequence[Fixture]) -> Decimal | None:
             if not rows:
                 return None
             return Decimal(

@@ -52,16 +52,25 @@ def get_market_data_ingestion_facade(
 IngestionFacade = Annotated[MarketDataApiFacade, Depends(get_market_data_ingestion_facade)]
 
 
-class PageResultContract(Protocol):
+class PageResultContract[EntityT](Protocol):
     """The facade-owned pagination result shape consumed by the transport adapter."""
 
-    items: list[object]
-    total: int
-    limit: int
-    offset: int
+    @property
+    def items(self) -> list[EntityT]: ...
+
+    @property
+    def total(self) -> int: ...
+
+    @property
+    def limit(self) -> int: ...
+
+    @property
+    def offset(self) -> int: ...
 
 
-def _page[SchemaT: BaseModel](result: PageResultContract, schema: type[SchemaT]) -> Page[SchemaT]:
+def _page[SchemaT: BaseModel, EntityT](
+    result: PageResultContract[EntityT], schema: type[SchemaT]
+) -> Page[SchemaT]:
     """Convert facade entities to documented internal read-only response contracts."""
     return Page(
         items=[schema.model_validate(item) for item in result.items],
