@@ -113,6 +113,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
             {"name": "Risk", "description": "Immutable reliability and uncertainty assessments."},
             {"name": "Explainability", "description": "Immutable traceable analytical evidence."},
+            {
+                "name": "Evaluation",
+                "description": "Deterministic historical backtesting and simulation.",
+            },
         ],
         lifespan=lifespan,
     )

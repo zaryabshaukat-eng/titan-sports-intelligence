@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.modules.consensus.api import router as consensus_router
+from app.modules.evaluation.api import router as evaluation_router
 from app.modules.explainability.api import router as explainability_router
 from app.modules.feature_store.api import router as feature_store_router
 from app.modules.ingestion.api import router as ingestion_router
@@ -24,3 +25,4 @@ router.include_router(probability_router)
 router.include_router(consensus_router)
 router.include_router(risk_router)
 router.include_router(explainability_router)
+router.include_router(evaluation_router)

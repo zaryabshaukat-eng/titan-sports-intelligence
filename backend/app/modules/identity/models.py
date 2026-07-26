@@ -25,6 +25,7 @@ class Permission(StrEnum):
     CONSENSUS_EXECUTE = "consensus:execute"
     RISK_EXECUTE = "risk:execute"
     EXPLAINABILITY_EXECUTE = "explainability:execute"
+    EVALUATION_EXECUTE = "evaluation:execute"
     CONFIGURATION_MANAGE = "configuration:manage"
     AUDIT_READ = "audit:read"
     IDENTITY_MANAGE = "identity:manage"
@@ -65,6 +66,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.CONSENSUS_EXECUTE,
             Permission.RISK_EXECUTE,
             Permission.EXPLAINABILITY_EXECUTE,
+            Permission.EVALUATION_EXECUTE,
         }
     ),
     Role.VIEWER: frozenset(

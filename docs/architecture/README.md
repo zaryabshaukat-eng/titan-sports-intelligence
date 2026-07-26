@@ -21,6 +21,7 @@ This directory contains long-lived technical architecture documentation. Documen
 | [014-consensus-engine.md](014-consensus-engine.md) | Evidence-only combination, confidence, disagreement, and lineage |
 | [015-risk-engine.md](015-risk-engine.md) | Immutable uncertainty, stability, calibration, agreement, and data-quality assessments |
 | [016-explainability.md](016-explainability.md) | Immutable contributions, evidence, reasoning chains, confidence, and lineage |
+| [017-backtesting-simulation.md](017-backtesting-simulation.md) | Deterministic historical replay, scenarios, leakage controls, metrics, and lineage |
 | [phase-2-architecture-review.md](phase-2-architecture-review.md) | Original Phase 2 architecture blueprint and governance additions |
 | [012-platform-freeze-v0.3.0.md](012-platform-freeze-v0.3.0.md) | v0.3.0 architecture audit, scores, release gates, and freeze decision |
 

@@ -1,1 +1,1 @@
-"""Future model-evaluation domain boundary."""
+"""Immutable deterministic backtesting and historical simulation artifacts."""

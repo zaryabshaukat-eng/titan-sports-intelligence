@@ -10,6 +10,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex
 
 from app.modules.consensus import models as consensus_models  # noqa: F401
+from app.modules.evaluation import models as evaluation_models  # noqa: F401
 from app.modules.explainability import models as explainability_models  # noqa: F401
 from app.modules.feature_store import models as feature_store_models  # noqa: F401
 from app.modules.ingestion import models as ingestion_models  # noqa: F401
@@ -138,3 +139,10 @@ def test_explainability_migration_enforces_append_only_artifacts() -> None:
     assert "CREATE FUNCTION explainability_reject_mutation()" in sql
     assert "CREATE TRIGGER explainability_runs_immutable" in sql
     assert "CREATE TRIGGER explanations_immutable" in sql
+
+
+def test_backtest_migration_enforces_append_only_artifacts() -> None:
+    sql = _offline_upgrade_sql()
+    assert "CREATE FUNCTION backtest_reject_mutation()" in sql
+    assert "CREATE TRIGGER backtest_runs_immutable" in sql
+    assert "CREATE TRIGGER backtest_results_immutable" in sql
