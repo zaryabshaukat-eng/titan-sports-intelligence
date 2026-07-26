@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     outbox_retry_warning_threshold: int = 5
     worker_timeout_seconds: float = 30.0
     readiness_timeout_seconds: float = 2.0
+    infrastructure_cache_default_ttl_seconds: int = 300
+    infrastructure_lock_timeout_seconds: int = 30
+    infrastructure_worker_concurrency: int = 4
+    infrastructure_rate_limit_per_minute: int = 120
+    infrastructure_retry_attempts: int = 3
 
     identity_provider: str = "development"
     jwt_issuer: str | None = None

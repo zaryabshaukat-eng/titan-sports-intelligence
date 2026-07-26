@@ -24,6 +24,7 @@ This directory contains long-lived technical architecture documentation. Documen
 | [017-backtesting-simulation.md](017-backtesting-simulation.md) | Deterministic historical replay, scenarios, leakage controls, metrics, and lineage |
 | [018-continuous-evaluation.md](018-continuous-evaluation.md) | Append-only analytical health, drift, quality, alerts, and lineage monitoring |
 | [019-continuous-improvement.md](019-continuous-improvement.md) | Advisory-only improvement evidence and human-controlled promotion decisions |
+| [020-infrastructure-scaling.md](020-infrastructure-scaling.md) | Redis cache/locks, retries, operational health, and scaling boundaries |
 | [phase-2-architecture-review.md](phase-2-architecture-review.md) | Original Phase 2 architecture blueprint and governance additions |
 | [012-platform-freeze-v0.3.0.md](012-platform-freeze-v0.3.0.md) | v0.3.0 architecture audit, scores, release gates, and freeze decision |
 
