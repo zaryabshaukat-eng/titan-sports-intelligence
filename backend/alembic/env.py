@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 from app.core.config import get_settings
 from app.modules.consensus import models as consensus_models  # noqa: F401
+from app.modules.continuous_improvement import models as continuous_improvement_models  # noqa: F401
 from app.modules.evaluation import models as evaluation_models  # noqa: F401
 from app.modules.evaluation_monitoring import models as evaluation_monitoring_models  # noqa: F401
 from app.modules.explainability import models as explainability_models  # noqa: F401

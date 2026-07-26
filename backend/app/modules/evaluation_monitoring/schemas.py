@@ -3,7 +3,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.modules.evaluation_monitoring.enums import AlertSeverity, MonitoringStatus, ValidationStatus
+from app.modules.evaluation_monitoring.enums import (
+    AlertSeverity,
+    MonitoringStatus,
+    ValidationStatus,
+)
 
 
 class ProviderObservation(BaseModel):

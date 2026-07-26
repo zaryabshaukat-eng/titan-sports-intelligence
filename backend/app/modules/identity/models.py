@@ -27,6 +27,7 @@ class Permission(StrEnum):
     EXPLAINABILITY_EXECUTE = "explainability:execute"
     EVALUATION_EXECUTE = "evaluation:execute"
     EVALUATION_MONITORING_EXECUTE = "evaluation-monitoring:execute"
+    CONTINUOUS_IMPROVEMENT_EXECUTE = "continuous-improvement:execute"
     CONFIGURATION_MANAGE = "configuration:manage"
     AUDIT_READ = "audit:read"
     IDENTITY_MANAGE = "identity:manage"
@@ -69,6 +70,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.EXPLAINABILITY_EXECUTE,
             Permission.EVALUATION_EXECUTE,
             Permission.EVALUATION_MONITORING_EXECUTE,
+            Permission.CONTINUOUS_IMPROVEMENT_EXECUTE,
         }
     ),
     Role.VIEWER: frozenset(

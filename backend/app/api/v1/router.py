@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.modules.consensus.api import router as consensus_router
+from app.modules.continuous_improvement.api import router as continuous_improvement_router
 from app.modules.evaluation.api import router as evaluation_router
 from app.modules.evaluation_monitoring.api import router as evaluation_monitoring_router
 from app.modules.explainability.api import router as explainability_router
@@ -28,3 +29,4 @@ router.include_router(risk_router)
 router.include_router(explainability_router)
 router.include_router(evaluation_router)
 router.include_router(evaluation_monitoring_router)
+router.include_router(continuous_improvement_router)

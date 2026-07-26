@@ -1,4 +1,10 @@
-from app.modules.evaluation_monitoring.analyzers.distribution import js, kl, normalize, psi, wasserstein
+from app.modules.evaluation_monitoring.analyzers.distribution import (
+    js,
+    kl,
+    normalize,
+    psi,
+    wasserstein,
+)
 from app.modules.evaluation_monitoring.registry import MonitoringAnalyzerRegistry
 
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from math import log, sqrt
 
-
 EPSILON = 1e-12
 
 
@@ -12,11 +11,15 @@ def normalize(values: list[float]) -> list[float]:
 
 
 def psi(baseline: list[float], current: list[float]) -> float:
-    return sum((c - b) * log((c + EPSILON) / (b + EPSILON)) for b, c in zip(baseline, current, strict=True))
+    return sum(
+        (c - b) * log((c + EPSILON) / (b + EPSILON)) for b, c in zip(baseline, current, strict=True)
+    )
 
 
 def kl(baseline: list[float], current: list[float]) -> float:
-    return sum(b * log((b + EPSILON) / (c + EPSILON)) for b, c in zip(baseline, current, strict=True))
+    return sum(
+        b * log((b + EPSILON) / (c + EPSILON)) for b, c in zip(baseline, current, strict=True)
+    )
 
 
 def js(baseline: list[float], current: list[float]) -> float:
