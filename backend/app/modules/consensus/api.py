@@ -6,10 +6,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.consensus import ConsensusApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.consensus.exceptions import ConsensusResolutionError, ConsensusVersionConflictError
-from app.modules.consensus.registry import ConsensusStrategyRegistry
-from app.modules.consensus.repositories import ConsensusRepository
 from app.modules.consensus.schemas import (
     ConsensusLineageRead,
     ConsensusMetricRead,
@@ -21,7 +20,6 @@ from app.modules.consensus.schemas import (
     PaginationParams,
     StrategyMetadataRead,
 )
-from app.modules.consensus.service import ConsensusService
 from app.modules.identity.models import Permission
 from app.shared.persistence.database import get_db_session
 
@@ -41,7 +39,7 @@ async def strategies(principal: ReadPrincipal) -> list[StrategyMetadataRead]:
             description=item.description,
             parameter_schema=item.parameter_schema,
         )
-        for item in ConsensusStrategyRegistry().metadata()
+        for item in ConsensusApiFacade.strategies()
     ]
 
 
@@ -51,7 +49,7 @@ async def create_run(
 ) -> ConsensusRunRead:
     _ = principal
     try:
-        return ConsensusRunRead.model_validate(await ConsensusService(session).create_run(body))
+        return ConsensusRunRead.model_validate(await ConsensusApiFacade(session).create_run(body))
     except ConsensusResolutionError as exc:
         raise HTTPException(status_code=404, detail="consensus_probability_runs_not_found") from exc
     except ConsensusVersionConflictError as exc:
@@ -63,7 +61,7 @@ async def list_runs(
     pagination: PaginationDependency, session: SessionDependency, principal: ReadPrincipal
 ) -> Page[ConsensusRunRead]:
     _ = principal
-    items, total = await ConsensusRepository(session).list_runs(pagination)
+    items, total = await ConsensusApiFacade(session).runs(pagination)
     return Page(
         items=[ConsensusRunRead.model_validate(item) for item in items],
         total=total,
@@ -79,7 +77,7 @@ async def outputs(
     _ = principal
     return [
         ConsensusOutputRead.model_validate(item)
-        for item in await ConsensusRepository(session).outputs(run_id)
+        for item in await ConsensusApiFacade(session).outputs(run_id)
     ]
 
 
@@ -95,7 +93,7 @@ async def confidence(
             outcome=item.outcome,
             metrics=item.confidence_metrics,
         )
-        for item in await ConsensusRepository(session).outputs(run_id)
+        for item in await ConsensusApiFacade(session).outputs(run_id)
     ]
 
 
@@ -111,7 +109,7 @@ async def disagreement(
             outcome=item.outcome,
             metrics=item.disagreement_metrics,
         )
-        for item in await ConsensusRepository(session).outputs(run_id)
+        for item in await ConsensusApiFacade(session).outputs(run_id)
     ]
 
 
@@ -120,7 +118,7 @@ async def lineage(
     run_id: UUID, session: SessionDependency, principal: ReadPrincipal
 ) -> ConsensusLineageRead | None:
     _ = principal
-    value = await ConsensusRepository(session).lineage(run_id)
+    value = await ConsensusApiFacade(session).lineage(run_id)
     return ConsensusLineageRead.model_validate(value) if value else None
 
 
@@ -131,5 +129,5 @@ async def validation(
     _ = principal
     return [
         ConsensusValidationRead.model_validate(item)
-        for item in await ConsensusRepository(session).validation(run_id)
+        for item in await ConsensusApiFacade(session).validation(run_id)
     ]

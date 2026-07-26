@@ -4,11 +4,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.risk import RiskApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.identity.models import Permission
 from app.modules.risk.exceptions import RiskResolutionError, RiskVersionConflictError
-from app.modules.risk.registry import RiskAnalyzerRegistry
-from app.modules.risk.repositories import RiskRepository
 from app.modules.risk.schemas import (
     AnalyzerMetadataRead,
     RiskLineageRead,
@@ -17,7 +16,6 @@ from app.modules.risk.schemas import (
     RiskRunRead,
     RiskValidationRead,
 )
-from app.modules.risk.service import RiskService
 from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/risk", tags=["Risk"])
@@ -33,7 +31,7 @@ async def analyzers(principal: ReadPrincipal) -> list[AnalyzerMetadataRead]:
         AnalyzerMetadataRead(
             identifier=item.metadata.identifier, description=item.metadata.description
         )
-        for item in RiskAnalyzerRegistry().analyzers()
+        for item in RiskApiFacade.analyzers()
     ]
 
 
@@ -43,7 +41,7 @@ async def create_run(
 ) -> RiskRunRead:
     _ = principal
     try:
-        return RiskRunRead.model_validate(await RiskService(session).create_run(body))
+        return RiskRunRead.model_validate(await RiskApiFacade(session).create_run(body))
     except RiskResolutionError as exc:
         raise HTTPException(status_code=404, detail="risk_consensus_not_found") from exc
     except RiskVersionConflictError as exc:
@@ -56,8 +54,7 @@ async def outputs(
 ) -> list[RiskOutputRead]:
     _ = principal
     return [
-        RiskOutputRead.model_validate(item)
-        for item in await RiskRepository(session).outputs(run_id)
+        RiskOutputRead.model_validate(item) for item in await RiskApiFacade(session).outputs(run_id)
     ]
 
 
@@ -66,7 +63,7 @@ async def lineage(
     run_id: UUID, session: SessionDependency, principal: ReadPrincipal
 ) -> RiskLineageRead | None:
     _ = principal
-    value = await RiskRepository(session).lineage(run_id)
+    value = await RiskApiFacade(session).lineage(run_id)
     return RiskLineageRead.model_validate(value) if value else None
 
 
@@ -77,5 +74,5 @@ async def validation(
     _ = principal
     return [
         RiskValidationRead.model_validate(item)
-        for item in await RiskRepository(session).validation(run_id)
+        for item in await RiskApiFacade(session).validation(run_id)
     ]

@@ -36,6 +36,12 @@ async def health_check() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
+@router.get("/health/live", response_model=HealthResponse, status_code=status.HTTP_200_OK)
+async def liveness_check() -> HealthResponse:
+    """Stable orchestrator-facing alias for process liveness."""
+    return await health_check()
+
+
 @router.get("/ready", response_model=ReadinessResponse)
 async def readiness_check(request: Request, response: Response) -> ReadinessResponse:
     """Verify core dependencies and surface bounded operational backlog data."""
@@ -82,3 +88,15 @@ async def readiness_check(request: Request, response: Response) -> ReadinessResp
     return ReadinessResponse(
         status="ready" if is_ready else "not_ready", checks=checks, outbox_backlog=backlog
     )
+
+
+@router.get("/health/ready", response_model=ReadinessResponse)
+async def readiness_alias(request: Request, response: Response) -> ReadinessResponse:
+    """Stable orchestrator-facing alias for dependency readiness."""
+    return await readiness_check(request, response)
+
+
+@router.get("/health/dependencies", response_model=ReadinessResponse)
+async def dependency_health(request: Request, response: Response) -> ReadinessResponse:
+    """Expose dependency states without connection strings or implementation secrets."""
+    return await readiness_check(request, response)

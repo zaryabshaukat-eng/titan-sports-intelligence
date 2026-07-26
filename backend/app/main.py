@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.envelope import ApiEnvelopeMiddleware
 from app.api.health import router as health_router
 from app.api.v1.router import router as api_v1_router
 from app.core.config import Settings, get_settings
@@ -117,7 +118,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "name": "Evaluation",
                 "description": "Deterministic historical backtesting and simulation.",
             },
-            {"name": "Continuous Evaluation", "description": "Append-only analytical health monitoring."},
+            {
+                "name": "Continuous Evaluation",
+                "description": "Append-only analytical health monitoring.",
+            },
         ],
         lifespan=lifespan,
     )
@@ -143,6 +147,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if resolved_settings.trusted_hosts:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=resolved_settings.trusted_hosts)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(ApiEnvelopeMiddleware)
     app.add_middleware(AuthenticationMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(RequestIdMiddleware)

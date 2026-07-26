@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.research import ResearchApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.identity.models import Permission
 from app.modules.research.exceptions import (
@@ -16,7 +17,6 @@ from app.modules.research.exceptions import (
     ExperimentVersionConflictError,
     ResearchValidationError,
 )
-from app.modules.research.repositories import ResearchRepository
 from app.modules.research.schemas import (
     DatasetSnapshotCreate,
     DatasetSnapshotRead,
@@ -33,7 +33,6 @@ from app.modules.research.schemas import (
     PaginationParams,
     StatisticResultRead,
 )
-from app.modules.research.service import ResearchService
 from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/research", tags=["Research"])
@@ -58,7 +57,7 @@ async def create_dataset(
     _ = principal
     try:
         return DatasetSnapshotRead.model_validate(
-            await ResearchService(session).create_dataset(body)
+            await ResearchApiFacade(session).create_dataset(body)
         )
     except DatasetResolutionError as exc:
         raise HTTPException(
@@ -77,7 +76,7 @@ async def list_datasets(
     principal: ReadPrincipal,
 ) -> Page[DatasetSnapshotRead]:
     _ = principal
-    items, total = await ResearchRepository(session).list_datasets(pagination)
+    items, total = await ResearchApiFacade(session).datasets(pagination)
     return Page(
         items=[DatasetSnapshotRead.model_validate(item) for item in items],
         total=total,
@@ -98,7 +97,7 @@ async def list_dataset_rows(
     principal: ReadPrincipal,
 ) -> Page[DatasetSnapshotRowRead]:
     _ = principal
-    items, total = await ResearchRepository(session).dataset_rows(dataset_snapshot_id, pagination)
+    items, total = await ResearchApiFacade(session).dataset_rows(dataset_snapshot_id, pagination)
     return Page(
         items=[DatasetSnapshotRowRead.model_validate(item) for item in items],
         total=total,
@@ -121,7 +120,9 @@ async def create_experiment(
     """Run a reviewed statistical method only against a frozen dataset snapshot."""
     _ = principal
     try:
-        return ExperimentRead.model_validate(await ResearchService(session).create_experiment(body))
+        return ExperimentRead.model_validate(
+            await ResearchApiFacade(session).create_experiment(body)
+        )
     except DatasetResolutionError as exc:
         raise HTTPException(status_code=404, detail="research_dataset_not_found") from exc
     except ExperimentVersionConflictError as exc:
@@ -137,7 +138,7 @@ async def list_experiments(
     principal: ReadPrincipal,
 ) -> Page[ExperimentRead]:
     _ = principal
-    items, total = await ResearchRepository(session).list_experiments(pagination)
+    items, total = await ResearchApiFacade(session).experiments(pagination)
     return Page(
         items=[ExperimentRead.model_validate(item) for item in items],
         total=total,
@@ -159,7 +160,7 @@ async def experiment_statistics(
     _ = principal
     return [
         StatisticResultRead.model_validate(item)
-        for item in await ResearchRepository(session).results(experiment_id)
+        for item in await ResearchApiFacade(session).results(experiment_id)
     ]
 
 
@@ -174,7 +175,7 @@ async def experiment_lineage(
     principal: ReadPrincipal,
 ) -> ExperimentLineageRead | None:
     _ = principal
-    lineage = await ResearchRepository(session).lineage(experiment_id)
+    lineage = await ResearchApiFacade(session).lineage(experiment_id)
     return ExperimentLineageRead.model_validate(lineage) if lineage else None
 
 
@@ -191,7 +192,7 @@ async def experiment_validation(
     _ = principal
     return [
         ExperimentValidationRead.model_validate(item)
-        for item in await ResearchRepository(session).validation(experiment_id)
+        for item in await ResearchApiFacade(session).validation(experiment_id)
     ]
 
 
@@ -208,7 +209,9 @@ async def create_hypothesis(
 ) -> HypothesisRead:
     _ = principal
     try:
-        return HypothesisRead.model_validate(await ResearchService(session).create_hypothesis(body))
+        return HypothesisRead.model_validate(
+            await ResearchApiFacade(session).create_hypothesis(body)
+        )
     except ExperimentVersionConflictError as exc:
         raise HTTPException(status_code=409, detail="research_hypothesis_immutable") from exc
 
@@ -220,7 +223,7 @@ async def list_hypotheses(
     principal: ReadPrincipal,
 ) -> Page[HypothesisRead]:
     _ = principal
-    items, total = await ResearchRepository(session).list_hypotheses(pagination)
+    items, total = await ResearchApiFacade(session).hypotheses(pagination)
     return Page(
         items=[HypothesisRead.model_validate(item) for item in items],
         total=total,
@@ -243,7 +246,7 @@ async def evaluate_hypothesis(
     _ = principal
     try:
         return HypothesisEvaluationRead.model_validate(
-            await ResearchService(session).evaluate_hypothesis(body)
+            await ResearchApiFacade(session).evaluate_hypothesis(body)
         )
     except DatasetResolutionError as exc:
         raise HTTPException(status_code=404, detail="research_artifact_not_found") from exc
@@ -264,5 +267,5 @@ async def hypothesis_evaluations(
     _ = principal
     return [
         HypothesisEvaluationRead.model_validate(item)
-        for item in await ResearchRepository(session).hypothesis_evaluations(hypothesis_id)
+        for item in await ResearchApiFacade(session).hypothesis_evaluations(hypothesis_id)
     ]

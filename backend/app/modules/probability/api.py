@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.facades.probability import ProbabilityApiFacade
 from app.core.security import Principal, require_permissions
 from app.modules.identity.models import Permission
 from app.modules.probability.exceptions import (
@@ -15,8 +16,6 @@ from app.modules.probability.exceptions import (
     ProbabilityValidationError,
     ProbabilityVersionConflictError,
 )
-from app.modules.probability.registry import ProbabilityModelRegistry
-from app.modules.probability.repositories import ProbabilityRepository
 from app.modules.probability.schemas import (
     CalibrationVersionCreate,
     CalibrationVersionRead,
@@ -31,7 +30,6 @@ from app.modules.probability.schemas import (
     ProbabilityRunRead,
     ProbabilityValidationRead,
 )
-from app.modules.probability.service import ProbabilityService
 from app.shared.persistence.database import get_db_session
 
 router = APIRouter(prefix="/probability", tags=["Probability"])
@@ -57,7 +55,7 @@ async def list_models(principal: ReadPrincipal) -> list[ModelMetadataRead]:
             description=metadata.description,
             parameter_schema=metadata.parameter_schema,
         )
-        for metadata in ProbabilityModelRegistry().metadata()
+        for metadata in ProbabilityApiFacade.models()
     ]
 
 
@@ -76,7 +74,7 @@ async def create_calibration(
     _ = principal
     try:
         return CalibrationVersionRead.model_validate(
-            await ProbabilityService(session).create_calibration(body)
+            await ProbabilityApiFacade(session).create_calibration(body)
         )
     except ProbabilityVersionConflictError as exc:
         raise HTTPException(
@@ -97,7 +95,7 @@ async def list_calibrations(
     principal: ReadPrincipal,
 ) -> Page[CalibrationVersionRead]:
     _ = principal
-    items, total = await ProbabilityRepository(session).list_calibrations(pagination)
+    items, total = await ProbabilityApiFacade(session).calibrations(pagination)
     return Page(
         items=[CalibrationVersionRead.model_validate(item) for item in items],
         total=total,
@@ -120,7 +118,9 @@ async def create_run(
     """Run one selected model only over a frozen Research dataset snapshot."""
     _ = principal
     try:
-        return ProbabilityRunRead.model_validate(await ProbabilityService(session).create_run(body))
+        return ProbabilityRunRead.model_validate(
+            await ProbabilityApiFacade(session).create_run(body)
+        )
     except ProbabilityResolutionError as exc:
         raise HTTPException(status_code=404, detail="probability_dependency_not_found") from exc
     except ProbabilityVersionConflictError as exc:
@@ -138,7 +138,7 @@ async def list_runs(
     principal: ReadPrincipal,
 ) -> Page[ProbabilityRunRead]:
     _ = principal
-    items, total = await ProbabilityRepository(session).list_runs(pagination)
+    items, total = await ProbabilityApiFacade(session).runs(pagination)
     return Page(
         items=[ProbabilityRunRead.model_validate(item) for item in items],
         total=total,
@@ -160,7 +160,7 @@ async def list_outputs(
     _ = principal
     return [
         ProbabilityOutputRead.model_validate(item)
-        for item in await ProbabilityRepository(session).outputs(probability_run_id)
+        for item in await ProbabilityApiFacade(session).outputs(probability_run_id)
     ]
 
 
@@ -180,7 +180,7 @@ async def create_evaluation(
     _ = principal
     try:
         return ProbabilityEvaluationRead.model_validate(
-            await ProbabilityService(session).create_evaluation(probability_run_id, body)
+            await ProbabilityApiFacade(session).create_evaluation(probability_run_id, body)
         )
     except ProbabilityResolutionError as exc:
         raise HTTPException(status_code=404, detail="probability_run_not_found") from exc
@@ -203,7 +203,7 @@ async def list_evaluations(
     _ = principal
     return [
         ProbabilityEvaluationRead.model_validate(item)
-        for item in await ProbabilityRepository(session).evaluations(probability_run_id)
+        for item in await ProbabilityApiFacade(session).evaluations(probability_run_id)
     ]
 
 
@@ -218,7 +218,7 @@ async def get_lineage(
     principal: ReadPrincipal,
 ) -> ProbabilityLineageRead | None:
     _ = principal
-    lineage = await ProbabilityRepository(session).lineage(probability_run_id)
+    lineage = await ProbabilityApiFacade(session).lineage(probability_run_id)
     return ProbabilityLineageRead.model_validate(lineage) if lineage else None
 
 
@@ -235,5 +235,5 @@ async def list_validation(
     _ = principal
     return [
         ProbabilityValidationRead.model_validate(item)
-        for item in await ProbabilityRepository(session).validation(probability_run_id)
+        for item in await ProbabilityApiFacade(session).validation(probability_run_id)
     ]

@@ -30,6 +30,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Set the correlation context for the complete request lifecycle."""
         request_id = _request_id_from_header(request.headers.get("X-Request-ID"))
+        request.state.request_id = request_id
         trace_id = _trace_id_from_header(request.headers.get("traceparent"))
         request_token = request_id_context.set(request_id)
         trace_token = trace_id_context.set(trace_id)

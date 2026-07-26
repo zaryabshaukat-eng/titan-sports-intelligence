@@ -9,19 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.sports.repositories import (
-    CompetitionRepository,
-    CountryRepository,
-    FixtureRepository,
-    FixtureStatusRepository,
-    LeagueRepository,
-    OfficialRepository,
-    PageResult,
-    SeasonRepository,
-    TeamRepository,
-    TimezoneRepository,
-    VenueRepository,
-)
+from app.api.facades.sports import SportsApiFacade
+from app.modules.sports.repositories import PageResult
 from app.modules.sports.schemas import (
     CompetitionFilters,
     CompetitionRead,
@@ -87,7 +76,7 @@ async def list_countries(
     session: SessionDependency,
 ) -> Page[CountryRead]:
     """List active country reference records with name and ISO filtering."""
-    return _page(await CountryRepository(session).list(filters, pagination), CountryRead)
+    return _page(await SportsApiFacade(session).countries(filters, pagination), CountryRead)
 
 
 @router.get(
@@ -95,7 +84,7 @@ async def list_countries(
 )
 async def get_country(country_id: UUID, session: SessionDependency) -> CountryRead:
     """Fetch one non-deleted country by its canonical UUID."""
-    country = _require(await CountryRepository(session).get(country_id), "Country", country_id)
+    country = _require(await SportsApiFacade(session).country(country_id), "Country", country_id)
     return CountryRead.model_validate(country)
 
 
@@ -106,13 +95,13 @@ async def list_leagues(
     session: SessionDependency,
 ) -> Page[LeagueRead]:
     """List active league organizations by country, sport, or name."""
-    return _page(await LeagueRepository(session).list(filters, pagination), LeagueRead)
+    return _page(await SportsApiFacade(session).leagues(filters, pagination), LeagueRead)
 
 
 @router.get("/leagues/{league_id}", response_model=LeagueRead, summary="Get a canonical league")
 async def get_league(league_id: UUID, session: SessionDependency) -> LeagueRead:
     """Fetch one non-deleted league by its canonical UUID."""
-    league = _require(await LeagueRepository(session).get(league_id), "League", league_id)
+    league = _require(await SportsApiFacade(session).league(league_id), "League", league_id)
     return LeagueRead.model_validate(league)
 
 
@@ -127,7 +116,7 @@ async def list_competitions(
     session: SessionDependency,
 ) -> Page[CompetitionRead]:
     """List active competitions by league, country, sport, type, or name."""
-    return _page(await CompetitionRepository(session).list(filters, pagination), CompetitionRead)
+    return _page(await SportsApiFacade(session).competitions(filters, pagination), CompetitionRead)
 
 
 @router.get(
@@ -138,7 +127,7 @@ async def list_competitions(
 async def get_competition(competition_id: UUID, session: SessionDependency) -> CompetitionRead:
     """Fetch one non-deleted competition by its canonical UUID."""
     competition = _require(
-        await CompetitionRepository(session).get(competition_id), "Competition", competition_id
+        await SportsApiFacade(session).competition(competition_id), "Competition", competition_id
     )
     return CompetitionRead.model_validate(competition)
 
@@ -150,13 +139,13 @@ async def list_seasons(
     session: SessionDependency,
 ) -> Page[SeasonRead]:
     """List active seasons by competition and lifecycle status."""
-    return _page(await SeasonRepository(session).list(filters, pagination), SeasonRead)
+    return _page(await SportsApiFacade(session).seasons(filters, pagination), SeasonRead)
 
 
 @router.get("/seasons/{season_id}", response_model=SeasonRead, summary="Get a canonical season")
 async def get_season(season_id: UUID, session: SessionDependency) -> SeasonRead:
     """Fetch one non-deleted season by its canonical UUID."""
-    season = _require(await SeasonRepository(session).get(season_id), "Season", season_id)
+    season = _require(await SportsApiFacade(session).season(season_id), "Season", season_id)
     return SeasonRead.model_validate(season)
 
 
@@ -167,13 +156,13 @@ async def list_teams(
     session: SessionDependency,
 ) -> Page[TeamRead]:
     """List active teams by country, sport, team type, or name."""
-    return _page(await TeamRepository(session).list(filters, pagination), TeamRead)
+    return _page(await SportsApiFacade(session).teams(filters, pagination), TeamRead)
 
 
 @router.get("/teams/{team_id}", response_model=TeamRead, summary="Get a canonical team")
 async def get_team(team_id: UUID, session: SessionDependency) -> TeamRead:
     """Fetch one non-deleted team by its canonical UUID."""
-    team = _require(await TeamRepository(session).get(team_id), "Team", team_id)
+    team = _require(await SportsApiFacade(session).team(team_id), "Team", team_id)
     return TeamRead.model_validate(team)
 
 
@@ -184,13 +173,13 @@ async def list_venues(
     session: SessionDependency,
 ) -> Page[VenueRead]:
     """List active venues by country, timezone, or name."""
-    return _page(await VenueRepository(session).list(filters, pagination), VenueRead)
+    return _page(await SportsApiFacade(session).venues(filters, pagination), VenueRead)
 
 
 @router.get("/venues/{venue_id}", response_model=VenueRead, summary="Get a canonical venue")
 async def get_venue(venue_id: UUID, session: SessionDependency) -> VenueRead:
     """Fetch one non-deleted venue by its canonical UUID."""
-    venue = _require(await VenueRepository(session).get(venue_id), "Venue", venue_id)
+    venue = _require(await SportsApiFacade(session).venue(venue_id), "Venue", venue_id)
     return VenueRead.model_validate(venue)
 
 
@@ -201,13 +190,15 @@ async def list_timezones(
     session: SessionDependency,
 ) -> Page[TimezoneRead]:
     """List canonical IANA timezones by name, active state, or primary country."""
-    return _page(await TimezoneRepository(session).list(filters, pagination), TimezoneRead)
+    return _page(await SportsApiFacade(session).timezones(filters, pagination), TimezoneRead)
 
 
 @router.get("/timezones/{timezone_id}", response_model=TimezoneRead, summary="Get an IANA timezone")
 async def get_timezone(timezone_id: UUID, session: SessionDependency) -> TimezoneRead:
     """Fetch one timezone by its canonical UUID."""
-    timezone = _require(await TimezoneRepository(session).get(timezone_id), "Timezone", timezone_id)
+    timezone = _require(
+        await SportsApiFacade(session).timezone(timezone_id), "Timezone", timezone_id
+    )
     return TimezoneRead.model_validate(timezone)
 
 
@@ -220,7 +211,7 @@ async def list_fixture_statuses(
     pagination: PaginationDependency, session: SessionDependency
 ) -> Page[FixtureStatusRead]:
     """List the seeded, extensible fixture-status taxonomy."""
-    return _page(await FixtureStatusRepository(session).list(pagination), FixtureStatusRead)
+    return _page(await SportsApiFacade(session).fixture_statuses(pagination), FixtureStatusRead)
 
 
 @router.get(
@@ -233,7 +224,7 @@ async def get_fixture_status(
 ) -> FixtureStatusRead:
     """Fetch one fixture status by its canonical UUID."""
     fixture_status = _require(
-        await FixtureStatusRepository(session).get(fixture_status_id),
+        await SportsApiFacade(session).fixture_status(fixture_status_id),
         "Fixture status",
         fixture_status_id,
     )
@@ -247,13 +238,13 @@ async def list_fixtures(
     session: SessionDependency,
 ) -> Page[FixtureRead]:
     """List fixtures by season, competition, teams, status, venue, or time window."""
-    return _page(await FixtureRepository(session).list(filters, pagination), FixtureRead)
+    return _page(await SportsApiFacade(session).fixtures(filters, pagination), FixtureRead)
 
 
 @router.get("/fixtures/{fixture_id}", response_model=FixtureRead, summary="Get a canonical fixture")
 async def get_fixture(fixture_id: UUID, session: SessionDependency) -> FixtureRead:
     """Fetch one immutable fixture record by its canonical UUID."""
-    fixture = _require(await FixtureRepository(session).get(fixture_id), "Fixture", fixture_id)
+    fixture = _require(await SportsApiFacade(session).fixture(fixture_id), "Fixture", fixture_id)
     return FixtureRead.model_validate(fixture)
 
 
@@ -264,7 +255,7 @@ async def list_officials(
     session: SessionDependency,
 ) -> Page[OfficialRead]:
     """List active officials by country or full name."""
-    return _page(await OfficialRepository(session).list(filters, pagination), OfficialRead)
+    return _page(await SportsApiFacade(session).officials(filters, pagination), OfficialRead)
 
 
 @router.get(
@@ -272,5 +263,7 @@ async def list_officials(
 )
 async def get_official(official_id: UUID, session: SessionDependency) -> OfficialRead:
     """Fetch one non-deleted official by its canonical UUID."""
-    official = _require(await OfficialRepository(session).get(official_id), "Official", official_id)
+    official = _require(
+        await SportsApiFacade(session).official(official_id), "Official", official_id
+    )
     return OfficialRead.model_validate(official)
