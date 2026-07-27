@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
+from typing import Any, cast
 
 from app.modules.market_data.read_repositories import OddsSnapshotRepository
 from app.modules.market_data.schemas import OddsSnapshotFilters, PaginationParams
@@ -33,7 +34,8 @@ def test_latest_odds_repository_uses_one_windowed_row_per_price_series() -> None
             PaginationParams(limit=25),
         )
 
-        compiled = str(session.statement.compile(compile_kwargs={"literal_binds": True}))
+        assert session.statement is not None
+        compiled = str(cast(Any, session.statement).compile(compile_kwargs={"literal_binds": True}))
         assert page.items == []
         assert page.total == 0
         assert "row_number() OVER" in compiled

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from typing import cast
 
 import pytest
 
@@ -17,7 +18,7 @@ def test_database_connection() -> None:
         pytest.skip("TITAN_TEST_DATABASE_URL is not configured")
 
     async def verify_connection() -> None:
-        manager = DatabaseSessionManager(database_url)
+        manager = DatabaseSessionManager(cast(str, database_url))
         try:
             assert await manager.ping() is True
         finally:

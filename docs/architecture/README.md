@@ -25,6 +25,9 @@ This directory contains long-lived technical architecture documentation. Documen
 | [018-continuous-evaluation.md](018-continuous-evaluation.md) | Append-only analytical health, drift, quality, alerts, and lineage monitoring |
 | [019-continuous-improvement.md](019-continuous-improvement.md) | Advisory-only improvement evidence and human-controlled promotion decisions |
 | [020-infrastructure-scaling.md](020-infrastructure-scaling.md) | Redis cache/locks, retries, operational health, and scaling boundaries |
+| [021-phase-2-14-api-final-report.md](021-phase-2-14-api-final-report.md) | API-layer migration, compatibility audit, and accepted technical debt |
+| [022-phase-2-15-production-readiness.md](022-phase-2-15-production-readiness.md) | Production-hardening validation, release evidence gates, and residual risk |
+| [023-phase-2-15-architecture-freeze.md](023-phase-2-15-architecture-freeze.md) | Architecture freeze decision, local evidence, and v1.0 release gates |
 | [phase-2-architecture-review.md](phase-2-architecture-review.md) | Original Phase 2 architecture blueprint and governance additions |
 | [012-platform-freeze-v0.3.0.md](012-platform-freeze-v0.3.0.md) | v0.3.0 architecture audit, scores, release gates, and freeze decision |
 

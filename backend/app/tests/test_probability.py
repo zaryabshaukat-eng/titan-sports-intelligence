@@ -6,9 +6,11 @@ import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.probability.calibration import calibrate, validate_calibration_parameters
 from app.modules.probability.ensemble import EnsembleMember, weighted_probability
@@ -19,6 +21,7 @@ from app.modules.probability.exceptions import (
     ProbabilityVersionConflictError,
 )
 from app.modules.probability.registry import ProbabilityModelRegistry
+from app.modules.probability.repositories import ProbabilityRepository
 from app.modules.probability.schemas import (
     CalibrationVersionCreate,
     EvaluationSample,
@@ -65,7 +68,8 @@ def test_baseline_inference_calibration_ensemble_and_evaluation_are_deterministi
         )
         == 0.625
     )
-    assert 0 <= float(metrics["brier_score"]) <= 1
+    brier_score = metrics["brier_score"]
+    assert isinstance(brier_score, float) and 0 <= brier_score <= 1
     assert metrics["roc_auc"] == 1.0
     assert sum(item["count"] for item in reliability) == 3
 
@@ -98,14 +102,14 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
 
     class _Session:
         def __init__(self) -> None:
-            self.added: list[object] = []
+            self.added: list[Any] = []
 
-        def add(self, item: object) -> None:
+        def add(self, item: Any) -> None:
             if getattr(item, "id", None) is None:
                 item.id = uuid4()
             self.added.append(item)
 
-        def add_all(self, items: list[object]) -> None:
+        def add_all(self, items: list[Any]) -> None:
             for item in items:
                 self.add(item)
 
@@ -137,13 +141,13 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
                     numeric_value=Decimal("1"),
                 ),
             ]
-            self.calibrations_by_key: dict[str, object] = {}
-            self.calibrations_by_version: dict[tuple[str, str], object] = {}
-            self.calibrations_by_id: dict[UUID, object] = {}
-            self.runs_by_key: dict[str, object] = {}
-            self.runs_by_code: dict[str, object] = {}
-            self.evaluations_by_key: dict[str, object] = {}
-            self.evaluations_by_code: dict[tuple[UUID, str], object] = {}
+            self.calibrations_by_key: dict[str, Any] = {}
+            self.calibrations_by_version: dict[tuple[str, str], Any] = {}
+            self.calibrations_by_id: dict[UUID, Any] = {}
+            self.runs_by_key: dict[str, Any] = {}
+            self.runs_by_code: dict[str, Any] = {}
+            self.evaluations_by_key: dict[str, Any] = {}
+            self.evaluations_by_code: dict[tuple[UUID, str], Any] = {}
 
         async def dataset(self, identifier: UUID) -> object | None:
             return self.dataset_value if identifier == dataset_id else None
@@ -151,7 +155,7 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
         async def experiment(self, identifier: UUID) -> object | None:
             return self.experiment_value if identifier == experiment_id else None
 
-        async def dataset_rows(self, identifier: UUID) -> list[object]:
+        async def dataset_rows(self, identifier: UUID) -> list[Any]:
             return self.rows if identifier == dataset_id else []
 
         async def calibration(self, identifier: UUID) -> object | None:
@@ -163,7 +167,7 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
         async def calibration_by_code_version(self, code: str, version: str) -> object | None:
             return self.calibrations_by_version.get((code, version))
 
-        async def create_calibration(self, calibration: object) -> object:
+        async def create_calibration(self, calibration: Any) -> Any:
             calibration.id = uuid4()
             self._session.add(calibration)
             self.calibrations_by_key[calibration.idempotency_key] = calibration
@@ -179,7 +183,7 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
         async def run_by_code(self, code: str) -> object | None:
             return self.runs_by_code.get(code)
 
-        async def create_run(self, run: object) -> object:
+        async def create_run(self, run: Any) -> Any:
             run.id = uuid4()
             self._session.add(run)
             self.runs_by_key[run.idempotency_key] = run
@@ -189,7 +193,7 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
         async def run(self, identifier: UUID) -> object | None:
             return next((run for run in self.runs_by_code.values() if run.id == identifier), None)
 
-        async def outputs_by_ids(self, output_ids: list[UUID]) -> list[object]:
+        async def outputs_by_ids(self, output_ids: list[UUID]) -> list[Any]:
             return [
                 item
                 for item in self._session.added
@@ -203,7 +207,7 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
         async def evaluation_by_code(self, run_id: UUID, code: str) -> object | None:
             return self.evaluations_by_code.get((run_id, code))
 
-        async def create_evaluation(self, evaluation: object) -> object:
+        async def create_evaluation(self, evaluation: Any) -> Any:
             evaluation.id = uuid4()
             self._session.add(evaluation)
             self.evaluations_by_key[evaluation.idempotency_key] = evaluation
@@ -214,8 +218,8 @@ def test_probability_service_persists_reproducible_runs_outputs_lineage_and_eval
 
     async def run() -> None:
         session = _Session()
-        service = ProbabilityService(session)  # type: ignore[arg-type]
-        service._repository = _Repository(session)  # type: ignore[assignment]
+        service = ProbabilityService(cast(AsyncSession, session))
+        service._repository = cast(ProbabilityRepository, _Repository(session))
         calibration = await service.create_calibration(
             CalibrationVersionCreate(
                 calibration_code="platt_home_form",

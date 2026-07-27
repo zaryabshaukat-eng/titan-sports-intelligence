@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from typing import Any, cast
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.ingestion.models import IngestionOutboxEvent
 from app.workers.outbox import EventSink, OutboxMessage, TransactionalOutboxWorker
@@ -43,13 +45,14 @@ def test_successful_delivery_acknowledges_exactly_the_leased_event() -> None:
     async def run() -> None:
         sink = _SuccessfulSink()
         worker = TransactionalOutboxWorker(AsyncMock(), sink)
-        worker._acknowledge = AsyncMock(return_value=True)
+        acknowledge = AsyncMock(return_value=True)
 
-        delivered = await worker._deliver(_message(), object)
+        with patch.object(worker, "_acknowledge", new=acknowledge):
+            delivered = await worker._deliver(_message(), IngestionOutboxEvent)
 
         assert delivered == 1
         assert len(sink.messages) == 1
-        worker._acknowledge.assert_awaited_once()
+        acknowledge.assert_awaited_once()
 
     asyncio.run(run())
 
@@ -57,14 +60,18 @@ def test_successful_delivery_acknowledges_exactly_the_leased_event() -> None:
 def test_failed_delivery_is_scheduled_for_retry_without_acknowledging() -> None:
     async def run() -> None:
         worker = TransactionalOutboxWorker(AsyncMock(), _FailingSink())
-        worker._record_failure = AsyncMock()
-        worker._acknowledge = AsyncMock(return_value=True)
+        record_failure = AsyncMock()
+        acknowledge = AsyncMock(return_value=True)
 
-        delivered = await worker._deliver(_message(), object)
+        with (
+            patch.object(worker, "_record_failure", new=record_failure),
+            patch.object(worker, "_acknowledge", new=acknowledge),
+        ):
+            delivered = await worker._deliver(_message(), IngestionOutboxEvent)
 
         assert delivered == 0
-        worker._record_failure.assert_awaited_once()
-        worker._acknowledge.assert_not_awaited()
+        record_failure.assert_awaited_once()
+        acknowledge.assert_not_awaited()
 
     asyncio.run(run())
 
@@ -116,7 +123,7 @@ def test_failure_schedules_deterministic_exponential_backoff() -> None:
         now = datetime(2026, 7, 25, tzinfo=UTC)
         session = _RecordingSession()
         worker = TransactionalOutboxWorker(
-            _RecordingSessionFactory(session),  # type: ignore[arg-type]
+            cast(async_sessionmaker[AsyncSession], _RecordingSessionFactory(session)),
             now=lambda: now,
             retry_initial_seconds=2,
             retry_max_seconds=60,
@@ -150,7 +157,7 @@ def test_failure_dead_letters_at_the_configured_attempt_limit() -> None:
         now = datetime(2026, 7, 25, tzinfo=UTC)
         session = _RecordingSession()
         worker = TransactionalOutboxWorker(
-            _RecordingSessionFactory(session),  # type: ignore[arg-type]
+            cast(async_sessionmaker[AsyncSession], _RecordingSessionFactory(session)),
             now=lambda: now,
             max_attempts=2,
         )
@@ -183,14 +190,14 @@ def test_claim_query_uses_skip_locked_and_recovers_expired_leases() -> None:
     async def run() -> None:
         session = _ClaimSession()
         worker = TransactionalOutboxWorker(
-            _RecordingSessionFactory(session),  # type: ignore[arg-type]
+            cast(async_sessionmaker[AsyncSession], _RecordingSessionFactory(session)),
             now=lambda: datetime(2026, 7, 25, tzinfo=UTC),
         )
 
         messages = await worker._claim("fixture_ingestion", IngestionOutboxEvent, "occurred_at")
 
         compiled = str(
-            session.statement.compile(
+            cast(Any, session.statement).compile(
                 dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
             )
         )
@@ -206,17 +213,20 @@ def test_claim_query_uses_skip_locked_and_recovers_expired_leases() -> None:
 def test_lost_lease_cannot_mark_an_event_as_published() -> None:
     async def run() -> None:
         session = _RecordingSession()
-        worker = TransactionalOutboxWorker(_RecordingSessionFactory(session))  # type: ignore[arg-type]
+        worker = TransactionalOutboxWorker(
+            cast(async_sessionmaker[AsyncSession], _RecordingSessionFactory(session))
+        )
 
         async def lost_lease(statement):  # type: ignore[no-untyped-def]
             session.statement = statement
             return SimpleNamespace(rowcount=0)
 
-        session.execute = lost_lease  # type: ignore[method-assign]
-        acknowledged = await worker._acknowledge(_message(), IngestionOutboxEvent)
+        with patch.object(session, "execute", new=lost_lease):
+            acknowledged = await worker._acknowledge(_message(), IngestionOutboxEvent)
 
         assert acknowledged is False
-        compiled = str(session.statement.compile(compile_kwargs={"literal_binds": True}))
+        assert session.statement is not None
+        compiled = str(cast(Any, session.statement).compile(compile_kwargs={"literal_binds": True}))
         assert "ingestion_outbox_events.lease_owner" in compiled
         assert "ingestion_outbox_events.published_at IS NULL" in compiled
 
@@ -237,12 +247,12 @@ def test_shutdown_drains_the_active_batch_before_the_worker_exits() -> None:
             completed.set()
             return 0
 
-        worker.run_once = run_once  # type: ignore[method-assign]
-        task = asyncio.create_task(worker.run_forever(0.01, stop_event))
-        await started.wait()
-        stop_event.set()
-        release.set()
-        await task
+        with patch.object(worker, "run_once", new=run_once):
+            task = asyncio.create_task(worker.run_forever(0.01, stop_event))
+            await started.wait()
+            stop_event.set()
+            release.set()
+            await task
 
         assert completed.is_set() is True
 

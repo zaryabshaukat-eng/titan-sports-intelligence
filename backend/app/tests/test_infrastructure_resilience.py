@@ -1,9 +1,11 @@
 import asyncio
+from typing import cast
 
 from app.modules.infrastructure.cache import Cache
 from app.modules.infrastructure.locks import DistributedLock
 from app.modules.infrastructure.queue import InMemoryQueue
 from app.modules.infrastructure.workers import Worker
+from app.shared.redis import RedisClient
 
 
 class Client:
@@ -44,17 +46,18 @@ def test_cache_lock_and_concurrent_claims() -> None:
 
 
 async def _exercise() -> None:
-    cache = Cache(Redis())
+    redis = cast(RedisClient, Redis())
+    cache = Cache(redis)
     assert await cache.set("a", {"x": 1}, 1)
     assert await cache.get("a") == {"x": 1}
     assert await cache.delete("a")
-    assert await Cache(Broken()).get("x") is None
-    lock = DistributedLock(Redis(), "x", 1)
+    assert await Cache(cast(RedisClient, Broken())).get("x") is None
+    lock = DistributedLock(redis, "x", 1)
     assert await lock.acquire()
-    assert not await DistributedLock(Redis(), "x", 1).acquire()
+    assert not await DistributedLock(redis, "x", 1).acquire()
     assert await lock.renew()
     assert await lock.release()
-    assert await DistributedLock(Redis(), "x", 1).acquire()
+    assert await DistributedLock(redis, "x", 1).acquire()
     queue = InMemoryQueue()
     await queue.enqueue("ok", {})
     calls = []

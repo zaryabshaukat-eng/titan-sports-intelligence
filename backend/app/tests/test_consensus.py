@@ -5,15 +5,18 @@ from __future__ import annotations
 import asyncio
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.consensus.confidence import metrics as confidence_metrics
 from app.modules.consensus.disagreement import metrics as disagreement_metrics
 from app.modules.consensus.engines import ConsensusEstimate
 from app.modules.consensus.enums import ConsensusRunStatus, ConsensusStrategy
 from app.modules.consensus.registry import ConsensusStrategyRegistry
+from app.modules.consensus.repositories import ConsensusRepository
 from app.modules.consensus.schemas import ConsensusRunCreate
 from app.modules.consensus.service import ConsensusService
 from app.modules.consensus.voting import majority_vote
@@ -43,20 +46,20 @@ def test_consensus_service_reuses_exact_run_and_persists_lineage_and_output() ->
 
     class Session:
         def __init__(self) -> None:
-            self.added: list[object] = []
+            self.added: list[Any] = []
 
-        def add(self, item: object) -> None:
+        def add(self, item: Any) -> None:
             if getattr(item, "id", None) is None:
                 item.id = uuid4()
             self.added.append(item)
 
-        def add_all(self, items: list[object]) -> None:
+        def add_all(self, items: list[Any]) -> None:
             for item in items:
                 self.add(item)
 
     class Repository:
         def __init__(self, session: Session) -> None:
-            self.session, self.runs = session, {}
+            self.session, self.runs = session, cast(dict[str, Any], {})
             self.inputs = [
                 SimpleNamespace(
                     id=run_ids[0],
@@ -98,7 +101,7 @@ def test_consensus_service_reuses_exact_run_and_persists_lineage_and_output() ->
                 ),
             ]
 
-        async def probability_runs(self, _: object) -> list[object]:
+        async def probability_runs(self, _: object) -> list[Any]:
             return self.inputs
 
         async def existing_run(self, key: str) -> object | None:
@@ -107,22 +110,22 @@ def test_consensus_service_reuses_exact_run_and_persists_lineage_and_output() ->
         async def run_by_code(self, code: str) -> object | None:
             return next((item for item in self.runs.values() if item.run_code == code), None)
 
-        async def create_run(self, run: object) -> object:
+        async def create_run(self, run: Any) -> Any:
             run.id = uuid4()
             self.session.add(run)
             self.runs[run.idempotency_key] = run
             return run
 
-        async def probability_outputs(self, _: object) -> list[object]:
+        async def probability_outputs(self, _: object) -> list[Any]:
             return self.source_outputs
 
-        async def latest_evaluations(self, _: object) -> list[object]:
+        async def latest_evaluations(self, _: object) -> list[Any]:
             return []
 
     async def run() -> None:
         session = Session()
-        service = ConsensusService(session)  # type: ignore[arg-type]
-        service._repository = Repository(session)  # type: ignore[assignment]
+        service = ConsensusService(cast(AsyncSession, session))
+        service._repository = cast(ConsensusRepository, Repository(session))
         request = ConsensusRunCreate(
             run_code="two_models_v1",
             probability_run_ids=run_ids,

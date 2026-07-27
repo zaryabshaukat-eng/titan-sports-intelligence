@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import AbstractAsyncContextManager
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from typing import Any, cast
+from unittest.mock import AsyncMock, patch
 
 from app.modules.statistics.api import snapshots
 from app.modules.statistics.enums import StatisticsAuditOutcome, StatisticsRunStatus
@@ -62,9 +63,6 @@ def test_statistics_failure_uses_savepoint_and_retains_only_failure_evidence() -
     async def run() -> None:
         session = _Session()
         service = StatisticsIngestionService(session, StatisticsFeedV1Adapter())
-        service.repository.fixture = AsyncMock(return_value="fixture-id")
-        service.repository.provider = AsyncMock(return_value=SimpleNamespace(id="provider-id"))
-        service._append_snapshots = AsyncMock(side_effect=StatisticsResolutionError("bad team"))
         run = StatisticIngestionRun(
             provider_id="provider-id",
             status=StatisticsRunStatus.RUNNING,
@@ -72,7 +70,20 @@ def test_statistics_failure_uses_savepoint_and_retains_only_failure_evidence() -
             snapshots_created_count=0,
         )
 
-        result = await service._one("provider-id", run, 0, _payload())
+        with (
+            patch.object(service.repository, "fixture", new=AsyncMock(return_value="fixture-id")),
+            patch.object(
+                service.repository,
+                "provider",
+                new=AsyncMock(return_value=SimpleNamespace(id="provider-id")),
+            ),
+            patch.object(
+                service,
+                "_append_snapshots",
+                new=AsyncMock(side_effect=StatisticsResolutionError("bad team")),
+            ),
+        ):
+            result = await service._one("provider-id", run, 0, _payload())
 
         # One savepoint protects retry-safe raw receipt; the other rolls back
         # any partially-created canonical categories, series, or snapshots.
@@ -93,9 +104,6 @@ def test_statistics_success_records_only_applied_evidence_after_savepoints() -> 
     async def run() -> None:
         session = _Session()
         service = StatisticsIngestionService(session, StatisticsFeedV1Adapter())
-        service.repository.fixture = AsyncMock(return_value="fixture-id")
-        service.repository.provider = AsyncMock(return_value=SimpleNamespace(id="provider-id"))
-        service._append_snapshots = AsyncMock(return_value=1)
         run = StatisticIngestionRun(
             provider_id="provider-id",
             status=StatisticsRunStatus.RUNNING,
@@ -103,7 +111,16 @@ def test_statistics_success_records_only_applied_evidence_after_savepoints() -> 
             snapshots_created_count=0,
         )
 
-        result = await service._one("provider-id", run, 0, _payload())
+        with (
+            patch.object(service.repository, "fixture", new=AsyncMock(return_value="fixture-id")),
+            patch.object(
+                service.repository,
+                "provider",
+                new=AsyncMock(return_value=SimpleNamespace(id="provider-id")),
+            ),
+            patch.object(service, "_append_snapshots", new=AsyncMock(return_value=1)),
+        ):
+            result = await service._one("provider-id", run, 0, _payload())
 
         assert result.outcome == StatisticsAuditOutcome.PROCESSED
         assert result.snapshots_created == 1
@@ -173,7 +190,8 @@ def test_latest_query_uses_row_number_per_statistic_series() -> None:
     async def run() -> None:
         session = _ReadSession()
         result = await snapshots(None, None, Pagination(), session, latest_only=True)
-        compiled = str(session.statement.compile(compile_kwargs={"literal_binds": True}))
+        assert session.statement is not None
+        compiled = str(cast(Any, session.statement).compile(compile_kwargs={"literal_binds": True}))
         assert result.items == []
         assert "row_number() OVER" in compiled
         assert "PARTITION BY statistics_snapshots.series_id" in compiled

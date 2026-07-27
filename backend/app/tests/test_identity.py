@@ -75,6 +75,18 @@ def test_authentication_middleware_rejects_invalid_bearer_before_route_execution
     assert response.json()["detail"]["code"] == "authentication_invalid"
 
 
+def test_security_headers_are_applied_to_public_responses() -> None:
+    """Baseline browser protections apply independently of route authentication."""
+    settings = Settings(_env_file=None, app_env=AppEnvironment.TESTING)
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/health")
+
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert response.headers["Permissions-Policy"] == "geolocation=(), microphone=(), camera=()"
+
+
 def test_development_credentials_are_configurable_from_settings() -> None:
     settings = Settings(
         _env_file=None,
