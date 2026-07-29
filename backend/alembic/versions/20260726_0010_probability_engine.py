@@ -17,11 +17,15 @@ down_revision: str | None = "20260726_0009"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-calibration_method = sa.Enum(
-    "platt", "isotonic", "temperature", name="probability_calibration_method"
+calibration_method = postgresql.ENUM(
+    "platt", "isotonic", "temperature", name="probability_calibration_method", create_type=False
 )
-run_status = sa.Enum("completed", "validation_failed", name="probability_run_status")
-validation_status = sa.Enum("passed", "failed", name="probability_validation_status")
+run_status = postgresql.ENUM(
+    "completed", "validation_failed", name="probability_run_status", create_type=False
+)
+validation_status = postgresql.ENUM(
+    "passed", "failed", name="probability_validation_status", create_type=False
+)
 UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB()
 TIMESTAMP = sa.DateTime(timezone=True)

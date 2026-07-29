@@ -18,18 +18,30 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-competition_type = sa.Enum(
-    "league", "cup", "tournament", "playoff", "friendly", "other", name="sports_competition_type"
+competition_type = postgresql.ENUM(
+    "league",
+    "cup",
+    "tournament",
+    "playoff",
+    "friendly",
+    "other",
+    name="sports_competition_type",
+    create_type=False,
 )
-season_status = sa.Enum("planned", "active", "completed", "cancelled", name="sports_season_status")
-team_type = sa.Enum("club", "national", "representative", "other", name="sports_team_type")
-official_role = sa.Enum(
+season_status = postgresql.ENUM(
+    "planned", "active", "completed", "cancelled", name="sports_season_status", create_type=False
+)
+team_type = postgresql.ENUM(
+    "club", "national", "representative", "other", name="sports_team_type", create_type=False
+)
+official_role = postgresql.ENUM(
     "referee",
     "assistant_referee",
     "fourth_official",
     "video_assistant",
     "other",
     name="sports_official_role",
+    create_type=False,
 )
 
 UUID = postgresql.UUID(as_uuid=True)

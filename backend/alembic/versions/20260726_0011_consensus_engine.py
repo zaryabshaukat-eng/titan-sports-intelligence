@@ -17,16 +17,21 @@ down_revision: str | None = "20260726_0010"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-strategy = sa.Enum(
+strategy = postgresql.ENUM(
     "weighted_average",
     "median",
     "trimmed_mean",
     "majority_voting",
     "bayesian_pooling",
     name="consensus_strategy",
+    create_type=False,
 )
-run_status = sa.Enum("completed", "validation_failed", name="consensus_run_status")
-validation_status = sa.Enum("passed", "failed", name="consensus_validation_status")
+run_status = postgresql.ENUM(
+    "completed", "validation_failed", name="consensus_run_status", create_type=False
+)
+validation_status = postgresql.ENUM(
+    "passed", "failed", name="consensus_validation_status", create_type=False
+)
 UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB()
 TIME = sa.DateTime(timezone=True)

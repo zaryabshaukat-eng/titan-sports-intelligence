@@ -51,6 +51,17 @@ def test_alembic_offline_upgrade_and_downgrade_cover_full_chain() -> None:
         assert result.returncode == 0, result.stderr
 
 
+def test_postgresql_enum_migrations_disable_automatic_table_level_creation() -> None:
+    """Prevent explicit enum creation from racing a table-level automatic create."""
+    migration_directory = Path(__file__).resolve().parents[2] / "alembic" / "versions"
+    for migration in migration_directory.glob("*.py"):
+        source = migration.read_text(encoding="utf-8")
+        assert "sa.Enum(" not in source, (
+            f"{migration.name} must use postgresql.ENUM(create_type=False) "
+            "when it creates types explicitly"
+        )
+
+
 def test_declared_model_indexes_are_present_in_final_offline_migration_sql() -> None:
     """Prevent model indexes from drifting away from the final Alembic schema."""
     sql = _offline_upgrade_sql()

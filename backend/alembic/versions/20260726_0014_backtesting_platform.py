@@ -16,16 +16,21 @@ revision: str = "20260726_0014"
 down_revision: str | None = "20260726_0013"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | None = None
-status = sa.Enum("completed", "validation_failed", name="backtest_run_status")
-scenario = sa.Enum(
+status = postgresql.ENUM(
+    "completed", "validation_failed", name="backtest_run_status", create_type=False
+)
+scenario = postgresql.ENUM(
     "historical_replay",
     "rolling_window",
     "expanding_window",
     "walk_forward",
     "time_split",
     name="backtest_scenario",
+    create_type=False,
 )
-validation = sa.Enum("passed", "failed", name="backtest_validation_status")
+validation = postgresql.ENUM(
+    "passed", "failed", name="backtest_validation_status", create_type=False
+)
 UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB()
 TIME = sa.DateTime(timezone=True)

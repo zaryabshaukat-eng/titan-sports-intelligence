@@ -17,7 +17,7 @@ down_revision: str | None = "20260725_0007"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-feature_type = sa.Enum(
+feature_type = postgresql.ENUM(
     "temporal",
     "team",
     "fixture",
@@ -25,15 +25,26 @@ feature_type = sa.Enum(
     "statistical",
     "player",
     name="feature_store_feature_type",
+    create_type=False,
 )
-data_type = sa.Enum(
-    "number", "integer", "boolean", "string", "json", name="feature_store_data_type"
+data_type = postgresql.ENUM(
+    "number",
+    "integer",
+    "boolean",
+    "string",
+    "json",
+    name="feature_store_data_type",
+    create_type=False,
 )
-missing_policy = sa.Enum("reject", "null", "zero", name="feature_store_missing_value_policy")
-generation_status = sa.Enum(
-    "running", "completed", "failed", name="feature_store_generation_status"
+missing_policy = postgresql.ENUM(
+    "reject", "null", "zero", name="feature_store_missing_value_policy", create_type=False
 )
-validation_status = sa.Enum("passed", "failed", name="feature_store_validation_status")
+generation_status = postgresql.ENUM(
+    "running", "completed", "failed", name="feature_store_generation_status", create_type=False
+)
+validation_status = postgresql.ENUM(
+    "passed", "failed", name="feature_store_validation_status", create_type=False
+)
 
 
 def upgrade() -> None:

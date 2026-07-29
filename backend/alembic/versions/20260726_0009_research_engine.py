@@ -17,14 +17,23 @@ down_revision: str | None = "20260726_0008"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-experiment_status = sa.Enum("completed", "validation_failed", name="research_experiment_status")
-analysis_type = sa.Enum(
-    "descriptive", "correlation", "distribution", "significance", name="research_analysis_type"
+experiment_status = postgresql.ENUM(
+    "completed", "validation_failed", name="research_experiment_status", create_type=False
 )
-hypothesis_decision = sa.Enum(
-    "supported", "rejected", "inconclusive", name="research_hypothesis_decision"
+analysis_type = postgresql.ENUM(
+    "descriptive",
+    "correlation",
+    "distribution",
+    "significance",
+    name="research_analysis_type",
+    create_type=False,
 )
-validation_status = sa.Enum("passed", "failed", name="research_validation_status")
+hypothesis_decision = postgresql.ENUM(
+    "supported", "rejected", "inconclusive", name="research_hypothesis_decision", create_type=False
+)
+validation_status = postgresql.ENUM(
+    "passed", "failed", name="research_validation_status", create_type=False
+)
 UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB()
 TIMESTAMP = sa.DateTime(timezone=True)

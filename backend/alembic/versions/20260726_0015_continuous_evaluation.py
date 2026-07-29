@@ -15,9 +15,15 @@ depends_on: str | None = None
 UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB()
 TIME = sa.DateTime(timezone=True)
-status = sa.Enum("completed", "validation_failed", name="monitoring_status")
-validation = sa.Enum("passed", "failed", name="monitoring_validation_status")
-severity = sa.Enum("info", "warning", "critical", name="monitoring_alert_severity")
+status = postgresql.ENUM(
+    "completed", "validation_failed", name="monitoring_status", create_type=False
+)
+validation = postgresql.ENUM(
+    "passed", "failed", name="monitoring_validation_status", create_type=False
+)
+severity = postgresql.ENUM(
+    "info", "warning", "critical", name="monitoring_alert_severity", create_type=False
+)
 
 
 def base():

@@ -16,8 +16,12 @@ revision: str = "20260726_0013"
 down_revision: str | None = "20260726_0012"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
-run_status = sa.Enum("completed", "validation_failed", name="explainability_run_status")
-validation_status = sa.Enum("passed", "failed", name="explainability_validation_status")
+run_status = postgresql.ENUM(
+    "completed", "validation_failed", name="explainability_run_status", create_type=False
+)
+validation_status = postgresql.ENUM(
+    "passed", "failed", name="explainability_validation_status", create_type=False
+)
 UUID = postgresql.UUID(as_uuid=True)
 JSONB = postgresql.JSONB()
 TIME = sa.DateTime(timezone=True)

@@ -15,8 +15,8 @@ depends_on: str | None = None
 U = postgresql.UUID(as_uuid=True)
 J = postgresql.JSONB()
 T = sa.DateTime(timezone=True)
-S = sa.Enum("completed", "validation_failed", name="improvement_status")
-R = sa.Enum(
+S = postgresql.ENUM("completed", "validation_failed", name="improvement_status", create_type=False)
+R = postgresql.ENUM(
     "feature_retirement",
     "feature_promotion",
     "feature_redesign",
@@ -27,8 +27,15 @@ R = sa.Enum(
     "risk_adjustment",
     "research_priority",
     name="improvement_recommendation_type",
+    create_type=False,
 )
-D = sa.Enum("proposed", "human_approved", "human_rejected", name="improvement_decision_status")
+D = postgresql.ENUM(
+    "proposed",
+    "human_approved",
+    "human_rejected",
+    name="improvement_decision_status",
+    create_type=False,
+)
 
 
 def b():
