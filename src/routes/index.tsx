@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { PageHeader } from "../components/titan/AppShell";
 import { GlassCard, StatCard, StatusPill, SectionTitle } from "../components/titan/primitives";
+import { useMatches } from "@/hooks/useMatches";
 import {
   Activity, Radio, Building2, LineChart as LineIcon, Target, Shuffle,
   Brain, History, Sparkles, Bell, Download, RefreshCw, ArrowUpRight,
@@ -39,7 +41,37 @@ const alerts = [
   { t: "26m ago", type: "Market", msg: "Sharp money movement — Bayern -0.5 line", level: "warning" },
 ];
 
+function utcTodayQuery() {
+  const now = new Date();
+  const startsAfter = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const startsBefore = new Date(startsAfter);
+  startsBefore.setUTCDate(startsBefore.getUTCDate() + 1);
+  startsBefore.setUTCMilliseconds(startsBefore.getUTCMilliseconds() - 1);
+
+  return {
+    starts_after: startsAfter.toISOString(),
+    starts_before: startsBefore.toISOString(),
+    limit: 1,
+  };
+}
+
 function Dashboard() {
+  const todayMatchesQuery = useMemo(utcTodayQuery, []);
+  const { data: todayMatches, isError: isTodayMatchesError, isPending: isTodayMatchesPending } =
+    useMatches(todayMatchesQuery);
+  const todayMatchesValue = isTodayMatchesPending
+    ? "…"
+    : isTodayMatchesError
+      ? "—"
+      : String(todayMatches?.total ?? 0);
+  const todayMatchesSub = isTodayMatchesPending
+    ? "Loading fixtures"
+    : isTodayMatchesError
+      ? "Unavailable"
+      : todayMatches?.total === 0
+        ? "No fixtures scheduled"
+        : "Scheduled today";
+
   return (
     <>
       <PageHeader
@@ -60,7 +92,7 @@ function Dashboard() {
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="Today's Matches" value="248" delta={{ value: "+12", positive: true }} icon={Activity} />
+        <StatCard label="Today's Matches" value={todayMatchesValue} sub={todayMatchesSub} icon={Activity} />
         <StatCard label="Live Matches" value="37" sub="8 in stoppage" icon={Radio} accent="emerald" />
         <StatCard label="Bookmakers" value="42" sub="41 online · 1 degraded" icon={Building2} />
         <StatCard label="Markets Monitored" value="18.4K" delta={{ value: "+3.2%", positive: true }} icon={LineIcon} />
