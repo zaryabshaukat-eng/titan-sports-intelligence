@@ -8,6 +8,28 @@ from app.core.config import AppEnvironment, Settings
 from app.main import create_app
 
 
+def test_v1_preflight_allows_the_titan_response_envelope_header() -> None:
+    """Browser clients may opt in to the public v1 response envelope."""
+    settings = Settings(
+        _env_file=None,
+        app_env=AppEnvironment.TESTING,
+        cors_origins=["http://localhost:5000"],
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.options(
+            "/api/v1/sports/fixtures",
+            headers={
+                "Origin": "http://localhost:5000",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "x-titan-response-envelope",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5000"
+    assert "x-titan-response-envelope" in response.headers["access-control-allow-headers"].lower()
+
+
 def test_public_v1_operations_publish_common_openapi_contracts() -> None:
     """Every public operation documents its endpoint purpose and standard errors."""
     app = create_app(Settings(_env_file=None, app_env=AppEnvironment.TESTING))
