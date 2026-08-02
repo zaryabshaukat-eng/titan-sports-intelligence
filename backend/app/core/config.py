@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     jwt_audience: str | None = None
     jwt_hs256_secret: SecretStr | None = None
     jwt_public_key_pem: SecretStr | None = None
+    # Optional because API-Football is invoked only by an explicit import command.
+    # This resolves from TITAN_API_FOOTBALL_API_KEY and must never be logged.
+    api_football_api_key: SecretStr | None = None
     jwt_clock_skew_seconds: int = 30
     development_identity_credentials: dict[str, DevelopmentIdentityCredential] = {
         "titan-development-admin": DevelopmentIdentityCredential(

@@ -15,6 +15,7 @@ def test_settings_load_from_environment(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("TITAN_CORS_ORIGINS", "http://localhost:5000,http://localhost:3000")
     monkeypatch.setenv("TITAN_OUTBOX_RETRY_BACKOFF_MULTIPLIER", "3")
     monkeypatch.setenv("TITAN_OUTBOX_SHUTDOWN_TIMEOUT_SECONDS", "12.5")
+    monkeypatch.setenv("TITAN_API_FOOTBALL_API_KEY", "test-provider-secret")
 
     settings = Settings(_env_file=None)
 
@@ -23,6 +24,8 @@ def test_settings_load_from_environment(monkeypatch: MonkeyPatch) -> None:
     assert settings.cors_origins == ["http://localhost:5000", "http://localhost:3000"]
     assert settings.outbox_retry_backoff_multiplier == 3
     assert settings.outbox_shutdown_timeout_seconds == 12.5
+    assert settings.api_football_api_key is not None
+    assert settings.api_football_api_key.get_secret_value() == "test-provider-secret"
 
 
 def _production_settings(**overrides: object) -> Settings:
