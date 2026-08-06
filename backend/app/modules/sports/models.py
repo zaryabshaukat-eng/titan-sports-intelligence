@@ -174,7 +174,13 @@ class Competition(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     short_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sport: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     competition_type: Mapped[CompetitionType] = mapped_column(
-        SqlEnum(CompetitionType, name="sports_competition_type"), nullable=False, index=True
+        SqlEnum(
+            CompetitionType,
+            name="sports_competition_type",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     league_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -222,7 +228,13 @@ class Season(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[SeasonStatus] = mapped_column(
-        SqlEnum(SeasonStatus, name="sports_season_status"), nullable=False, index=True
+        SqlEnum(
+            SeasonStatus,
+            name="sports_season_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
 
     competition: Mapped[Competition] = relationship(back_populates="seasons")
@@ -279,7 +291,13 @@ class Team(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     short_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sport: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     team_type: Mapped[TeamType] = mapped_column(
-        SqlEnum(TeamType, name="sports_team_type"), nullable=False, index=True
+        SqlEnum(
+            TeamType,
+            name="sports_team_type",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     founded_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     country_id: Mapped[UUID | None] = mapped_column(
@@ -453,7 +471,13 @@ class FixtureOfficial(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
     role: Mapped[OfficialRole] = mapped_column(
-        SqlEnum(OfficialRole, name="sports_official_role"), nullable=False, index=True
+        SqlEnum(
+            OfficialRole,
+            name="sports_official_role",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     assignment_order: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
 

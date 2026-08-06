@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     # Optional because API-Football is invoked only by an explicit import command.
     # This resolves from TITAN_API_FOOTBALL_API_KEY and must never be logged.
     api_football_api_key: SecretStr | None = None
+    # Optional because football-data.org is invoked only by an explicit import command.
+    # This resolves from TITAN_FOOTBALL_DATA_API_TOKEN and must never be logged.
+    football_data_api_token: SecretStr | None = None
     jwt_clock_skew_seconds: int = 30
     development_identity_credentials: dict[str, DevelopmentIdentityCredential] = {
         "titan-development-admin": DevelopmentIdentityCredential(

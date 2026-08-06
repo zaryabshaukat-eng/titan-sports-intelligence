@@ -30,6 +30,7 @@ class _Source:
             league_id=39,
             league_name="Premier League",
             country_name="England",
+            country_provider_code="GB-ENG",
             country_iso_code="GB",
             season_year=2026,
             start_date=date(2026, 8, 14),

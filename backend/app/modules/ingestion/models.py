@@ -66,7 +66,13 @@ class FixtureIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     provider_name: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     status: Mapped[IngestionRunStatus] = mapped_column(
-        SqlEnum(IngestionRunStatus, name="ingestion_run_status"), nullable=False, index=True
+        SqlEnum(
+            IngestionRunStatus,
+            name="ingestion_run_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -116,7 +122,13 @@ class RawFixturePayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     validation_status: Mapped[RawPayloadStatus] = mapped_column(
-        SqlEnum(RawPayloadStatus, name="ingestion_raw_payload_status"), nullable=False, index=True
+        SqlEnum(
+            RawPayloadStatus,
+            name="ingestion_raw_payload_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     validation_errors: Mapped[list[dict[str, object]] | None] = mapped_column(JSONB, nullable=True)
     ingested_at: Mapped[datetime] = mapped_column(
@@ -197,7 +209,12 @@ class ProviderEntityIdentity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     provider_name: Mapped[str] = mapped_column(String(64), nullable=False)
     entity_type: Mapped[ProviderEntityType] = mapped_column(
-        SqlEnum(ProviderEntityType, name="ingestion_provider_entity_type"), nullable=False
+        SqlEnum(
+            ProviderEntityType,
+            name="ingestion_provider_entity_type",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
     )
     provider_entity_id: Mapped[str] = mapped_column(String(128), nullable=False)
     canonical_entity_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
@@ -239,7 +256,13 @@ class FixtureIngestionAudit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     provider_name: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     provider_fixture_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     outcome: Mapped[IngestionAuditOutcome] = mapped_column(
-        SqlEnum(IngestionAuditOutcome, name="ingestion_audit_outcome"), nullable=False, index=True
+        SqlEnum(
+            IngestionAuditOutcome,
+            name="ingestion_audit_outcome",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     checksum: Mapped[str] = mapped_column(String(64), nullable=False)
     changes: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default="{}")
@@ -285,7 +308,13 @@ class IngestionOutboxEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
     event_type: Mapped[IngestionEventType] = mapped_column(
-        SqlEnum(IngestionEventType, name="ingestion_event_type"), nullable=False, index=True
+        SqlEnum(
+            IngestionEventType,
+            name="ingestion_event_type",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
+        index=True,
     )
     event_key: Mapped[str] = mapped_column(String(128), nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
