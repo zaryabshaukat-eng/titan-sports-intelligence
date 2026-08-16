@@ -206,7 +206,12 @@ class StatisticIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     status: Mapped[StatisticsRunStatus] = mapped_column(
-        SqlEnum(StatisticsRunStatus, name="statistics_run_status"), nullable=False
+        SqlEnum(
+            StatisticsRunStatus,
+            name="statistics_run_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
     )
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -243,7 +248,12 @@ class RawStatisticPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     validation_status: Mapped[RawStatisticPayloadStatus] = mapped_column(
-        SqlEnum(RawStatisticPayloadStatus, name="statistics_raw_payload_status"), nullable=False
+        SqlEnum(
+            RawStatisticPayloadStatus,
+            name="statistics_raw_payload_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
+        nullable=False,
     )
     validation_errors: Mapped[list[dict[str, object]] | None] = mapped_column(JSONB)
     canonical_fixture_id: Mapped[UUID | None] = mapped_column(

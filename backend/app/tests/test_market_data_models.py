@@ -3,10 +3,12 @@
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import configure_mappers
 
+from app.modules.market_data.enums import OddsIngestionRunStatus, RawOddsPayloadStatus
 from app.modules.market_data.models import (
     Market,
     MarketDataOutboxEvent,
     MarketProviderMapping,
+    OddsIngestionRun,
     OddsMovement,
     OddsSnapshot,
     RawOddsPayload,
@@ -50,3 +52,19 @@ def test_market_data_models_define_immutable_snapshot_and_identity_constraints()
     assert "market_data_raw_odds_payloads" in Base.metadata.tables
     assert Selection.__tablename__ == "market_data_selections"
     assert RawOddsPayload.__tablename__ == "market_data_raw_odds_payloads"
+
+
+def test_odds_ingestion_run_status_uses_existing_postgresql_enum_values() -> None:
+    """Bind StrEnum values, rather than member names, to the existing database enum."""
+    enum_type = OddsIngestionRun.__table__.c.status.type
+
+    assert enum_type.name == "market_data_odds_ingestion_run_status"
+    assert enum_type.enums == [status.value for status in OddsIngestionRunStatus]
+
+
+def test_raw_odds_payload_status_uses_existing_postgresql_enum_values() -> None:
+    """Bind raw odds payload StrEnum values to the existing database enum."""
+    enum_type = RawOddsPayload.__table__.c.validation_status.type
+
+    assert enum_type.name == "market_data_raw_odds_payload_status"
+    assert enum_type.enums == [status.value for status in RawOddsPayloadStatus]

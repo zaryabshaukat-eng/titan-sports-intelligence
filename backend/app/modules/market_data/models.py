@@ -205,7 +205,11 @@ class OddsIngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     provider_name: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     status: Mapped[OddsIngestionRunStatus] = mapped_column(
-        SqlEnum(OddsIngestionRunStatus, name="market_data_odds_ingestion_run_status"),
+        SqlEnum(
+            OddsIngestionRunStatus,
+            name="market_data_odds_ingestion_run_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
         nullable=False,
         index=True,
     )
@@ -263,7 +267,11 @@ class RawOddsPayload(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     validation_status: Mapped[RawOddsPayloadStatus] = mapped_column(
-        SqlEnum(RawOddsPayloadStatus, name="market_data_raw_odds_payload_status"),
+        SqlEnum(
+            RawOddsPayloadStatus,
+            name="market_data_raw_odds_payload_status",
+            values_callable=lambda values: [item.value for item in values],
+        ),
         nullable=False,
         index=True,
     )
